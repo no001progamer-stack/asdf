@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ラケット診断 - 試打 × AIフォーム分析</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f3;
+      --bg3: #efefec;
+      --text: #1a1a19;
+      --text2: #6b6b67;
+      --text3: #9e9d98;
+      --border: rgba(0,0,0,0.12);
+      --border2: rgba(0,0,0,0.22);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --purple: #534AB7;
+      --purple-light: #EEEDFE;
+      --purple-text: #3C3489;
+      --teal: #1D9E75;
+      --teal-light: #E1F5EE;
+      --teal-text: #085041;
+      --amber-light: #FAEEDA;
+      --amber-text: #633806;
+    }
+ 
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a;
+        --bg2: #252523;
+        --bg3: #2e2e2b;
+        --text: #e8e6de;
+        --text2: #9e9d98;
+        --text3: #6b6b67;
+        --border: rgba(255,255,255,0.1);
+        --border2: rgba(255,255,255,0.2);
+        --purple-light: #2a2660;
+        --purple-text: #AFA9EC;
+        --teal-light: #083d2c;
+        --teal-text: #5DCAA5;
+        --amber-light: #3d2e0a;
+        --amber-text: #FAC775;
+      }
+    }
+ 
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg3);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+ 
+    .container { width: 100%; max-width: 480px; }
+ 
+    /* ── Header ── */
+    .header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+    .logo {
+      width: 36px; height: 36px; background: var(--purple);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
+    }
+    .logo i { color: white; font-size: 20px; }
+    .header-title { font-size: 17px; font-weight: 500; color: var(--text); }
+    .header-sub { font-size: 13px; color: var(--text2); }
+ 
+    /* ── Step indicator ── */
+    .step-row { display: flex; align-items: center; margin-bottom: 1.5rem; }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; cursor: pointer; }
+    .step-circle {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 500;
+      border: 0.5px solid var(--border); background: var(--bg2); color: var(--text3);
+      transition: all 0.2s;
+    }
+    .step-circle.active { background: var(--purple); color: white; border-color: var(--purple); }
+    .step-circle.done { background: var(--teal); color: white; border-color: var(--teal); }
+    .step-label { font-size: 11px; color: var(--text3); }
+    .step-label.active { color: var(--purple); font-weight: 500; }
+    .step-label.done { color: var(--teal-text); }
+    .step-line { flex: 1; height: 0.5px; background: var(--border); margin-bottom: 16px; transition: background 0.3s; }
+    .step-line.done { background: var(--teal); }
+ 
+    /* ── Screen ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+ 
+    /* ── Typography ── */
+    .section-label {
+      font-size: 12px; font-weight: 500; color: var(--text2);
+      margin-bottom: 8px; letter-spacing: 0.04em; text-transform: uppercase;
+    }
+ 
+    /* ── Cards ── */
+    .card {
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+      margin-bottom: 1rem;
+    }
+ 
+    /* ── Form ── */
+    .field { margin-bottom: 1.25rem; }
+    .field label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+    input[type="text"] {
+      width: 100%; padding: 8px 12px; border: 0.5px solid var(--border2);
+      border-radius: var(--radius-md); background: var(--bg);
+      color: var(--text); font-size: 14px; outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(83,74,183,0.15); }
+    input[type="text"]::placeholder { color: var(--text3); }
+ 
+    /* ── Shaft selector ── */
+    .shaft-group { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 1.25rem; }
+    .shaft-opt {
+      border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+      padding: 14px 10px; text-align: center; cursor: pointer;
+      transition: all 0.15s; background: var(--bg);
+    }
+    .shaft-opt:hover { border-color: var(--border2); background: var(--bg2); }
+    .shaft-opt.selected { border: 2px solid var(--purple); background: var(--purple-light); }
+    .shaft-icon { font-size: 22px; margin-bottom: 6px; display: block; color: var(--text3); }
+    .shaft-opt.selected .shaft-icon { color: var(--purple); }
+    .shaft-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+    .shaft-opt.selected .shaft-name { color: var(--purple-text); }
+    .shaft-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
+ 
+    /* ── Balance selector ── */
+    .balance-group { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 1.25rem; }
+    .bal-opt {
+      border: 0.5px solid var(--border); border-radius: var(--radius-md);
+      padding: 10px 8px; text-align: center; cursor: pointer;
+      transition: all 0.15s; background: var(--bg);
+    }
+    .bal-opt:hover { background: var(--bg2); }
+    .bal-opt.selected { border: 2px solid var(--teal); background: var(--teal-light); }
+    .bal-name { font-size: 12px; font-weight: 500; color: var(--text); }
+    .bal-opt.selected .bal-name { color: var(--teal-text); }
+    .bal-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+ 
+    /* ── Weight chips ── */
+    .weight-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .weight-chip {
+      font-size: 12px; padding: 5px 14px; border-radius: 20px;
+      border: 0.5px solid var(--border); background: var(--bg2);
+      color: var(--text2); cursor: pointer; transition: all 0.15s;
+    }
+    .weight-chip:hover { border-color: var(--border2); }
+    .weight-chip.selected { background: var(--amber-light); color: var(--amber-text); border-color: #EF9F27; }
+ 
+    /* ── Preview card ── */
+    .preview-card {
+      background: var(--bg2); border-radius: var(--radius-lg);
+      padding: 14px; margin-bottom: 1.25rem; border: 0.5px solid var(--border);
+    }
+    .preview-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 0; font-size: 13px;
+    }
+    .preview-row:not(:last-child) { border-bottom: 0.5px solid var(--border); }
+    .preview-key { color: var(--text2); }
+    .preview-val { font-weight: 500; color: var(--text); }
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+    .tag-purple { background: var(--purple-light); color: var(--purple-text); }
+    .tag-green { background: var(--teal-light); color: var(--teal-text); }
+    .tag-amber { background: var(--amber-light); color: var(--amber-text); }
+ 
+    /* ── Registered list ── */
+    .reg-card {
+      background: var(--bg); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+    }
+    .reg-icon {
+      width: 32px; height: 32px; background: var(--purple-light);
+      border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .reg-icon i { color: var(--purple); font-size: 15px; }
+    .reg-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .reg-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .reg-del {
+      margin-left: auto; background: none; border: none; cursor: pointer;
+      color: var(--text3); font-size: 16px; padding: 4px;
+    }
+    .reg-del:hover { color: var(--text2); }
+ 
+    /* ── Upload area ── */
+    .upload-area {
+      border: 1.5px dashed var(--border2); border-radius: var(--radius-lg);
+      padding: 2rem; text-align: center; cursor: pointer;
+      transition: background 0.15s; margin-bottom: 1rem;
+    }
+    .upload-area:hover { background: var(--bg2); }
+    .upload-area i { font-size: 32px; color: var(--text3); margin-bottom: 8px; display: block; }
+    .upload-area .mt { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+    .upload-area .st { font-size: 12px; color: var(--text3); }
+ 
+    /* ── Video card ── */
+    .video-card {
+      background: var(--bg); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1rem;
+    }
+    .video-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 0.5px solid var(--border);
+    }
+    .file-info { display: flex; align-items: center; gap: 8px; }
+    .file-info i { color: var(--text2); font-size: 16px; }
+    .fname { font-size: 13px; font-weight: 500; color: var(--text); }
+    .fsize { font-size: 12px; color: var(--text3); }
+    .vframe {
+      background: #1a1a1a; height: 160px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .vframe i { font-size: 40px; color: rgba(255,255,255,0.25); }
+ 
+    /* ── Racket tabs ── */
+    .racket-tabs { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .rtab {
+      font-size: 12px; padding: 5px 12px; border-radius: 20px;
+      border: 0.5px solid var(--border); background: var(--bg2);
+      color: var(--text2); cursor: pointer; transition: all 0.15s;
+    }
+    .rtab.active { background: var(--purple-light); color: var(--purple-text); border-color: #AFA9EC; }
+    .rtab.done-tab { background: var(--teal-light); color: var(--teal-text); border-color: #5DCAA5; }
+ 
+    /* ── Score grid ── */
+    .score-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 1rem; }
+    .sc { background: var(--bg2); border-radius: var(--radius-md); padding: 10px; text-align: center; }
+    .sc-label { font-size: 11px; color: var(--text2); margin-bottom: 3px; }
+    .sc-num { font-size: 22px; font-weight: 500; }
+    .sc-good { color: #0F6E56; }
+    .sc-ok { color: #854F0B; }
+ 
+    /* ── Feedback ── */
+    .fb-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1rem; }
+    .fb {
+      background: var(--bg); border: 0.5px solid var(--border);
+      border-radius: var(--radius-md); padding: 10px 12px;
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    .fb-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .fb-dot-g { background: var(--teal); }
+    .fb-dot-o { background: #EF9F27; }
+    .fb-dot-r { background: #E24B4A; }
+    .fb-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+    .fb-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+ 
+    /* ── Compare table ── */
+    .compare-table {
+      background: var(--bg); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px; margin-bottom: 1rem;
+    }
+    .ct-grid { display: grid; grid-template-columns: 90px 1fr 1fr 1fr; gap: 6px; align-items: center; }
+    .ct-head {
+      font-size: 11px; font-weight: 500; color: var(--text2); text-align: center;
+      padding-bottom: 6px; border-bottom: 0.5px solid var(--border);
+    }
+    .ct-label { font-size: 12px; color: var(--text2); padding: 6px 0; display: flex; align-items: center; gap: 4px; }
+    .ct-val { font-size: 13px; font-weight: 500; text-align: center; padding: 6px 2px; }
+    .ct-best { color: #0F6E56; }
+    .ct-norm { color: var(--text); }
+    .bar-wrap { height: 5px; background: var(--bg2); border-radius: 3px; margin-top: 3px; }
+    .bar { height: 5px; border-radius: 3px; }
+    .ba { background: #7F77DD; }
+    .bb { background: #1D9E75; }
+    .bc { background: #EF9F27; }
+ 
+    /* ── Result card ── */
+    .result-card {
+      background: var(--bg); border: 2px solid var(--purple);
+      border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 1rem;
+    }
+    .result-badge {
+      background: var(--purple-light); color: var(--purple-text);
+      font-size: 11px; padding: 3px 10px; border-radius: 20px;
+      font-weight: 500; display: inline-block; margin-bottom: 8px;
+    }
+    .result-name { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+    .result-reason { font-size: 13px; color: var(--text2); line-height: 1.6; }
+ 
+    /* ── Loading ── */
+    .loading-box { display: none; flex-direction: column; align-items: center; padding: 2rem; gap: 10px; }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2.5px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-steps { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+    .lstep { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+    .lstep.active { color: var(--text); }
+    .lstep.done { color: #0F6E56; }
+ 
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%; padding: 11px; background: var(--purple); color: white;
+      border: none; border-radius: var(--radius-md);
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-bottom: 8px; transition: opacity 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { background: var(--bg2); color: var(--text3); cursor: not-allowed; }
+    .btn-secondary {
+      width: 100%; padding: 10px; border: 0.5px solid var(--border2);
+      border-radius: var(--radius-md); background: transparent;
+      color: var(--text); font-size: 13px; cursor: pointer; margin-bottom: 6px;
+    }
+    .btn-secondary:hover { background: var(--bg2); }
+    .btn-dashed {
+      width: 100%; padding: 10px; border: 0.5px dashed var(--border2);
+      border-radius: var(--radius-md); background: transparent;
+      color: var(--text2); font-size: 13px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      margin-bottom: 1.5rem;
+    }
+    .btn-dashed:hover { background: var(--bg2); }
+    .nav-row { display: flex; gap: 8px; margin-top: 0.5rem; }
+    .nav-btn {
+      flex: 1; padding: 10px; border: 0.5px solid var(--border2);
+      border-radius: var(--radius-md); background: transparent;
+      color: var(--text); font-size: 13px; cursor: pointer;
+    }
+    .nav-btn:hover { background: var(--bg2); }
+    .nav-btn-primary {
+      flex: 1; padding: 10px; background: var(--purple); color: white;
+      border: none; border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    .nav-btn-primary:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+<div class="container">
+ 
+  <!-- Header -->
+  <div class="header">
+    <div class="logo"><i class="ti ti-tournament"></i></div>
+    <div>
+      <div class="header-title">ラケット診断</div>
+      <div class="header-sub">試打 × AIフォーム分析で最適な1本を</div>
+    </div>
+  </div>
+ 
+  <!-- Step indicator -->
+  <div class="step-row">
+    <div class="step" onclick="goStep(1)">
+      <div class="step-circle active" id="sc1">1</div>
+      <div class="step-label active" id="sl1">ラケット登録</div>
+    </div>
+    <div class="step-line" id="line1"></div>
+    <div class="step" onclick="goStep(2)">
+      <div class="step-circle" id="sc2">2</div>
+      <div class="step-label" id="sl2">試打・分析</div>
+    </div>
+    <div class="step-line" id="line2"></div>
+    <div class="step" onclick="goStep(3)">
+      <div class="step-circle" id="sc3">3</div>
+      <div class="step-label" id="sl3">比較・診断</div>
+    </div>
+  </div>
+ 
+  <!-- ===== SCREEN 1: ラケット登録 ===== -->
+  <div class="screen active" id="screen1">
+ 
+    <div class="field">
+      <label>ラケット名</label>
+      <input type="text" id="rname"
+placeholder="例：YONEX ASTROX 88D Pro"
+oninput="handleNameInput()">
+    </div>
+ 
+    <div class="section-label">シャフトの硬さ</div>
+    <div class="shaft-group">
+      <div class="shaft-opt" id="shaft-soft" onclick="selectShaft('soft')">
+        <i class="ti ti-wave-sine shaft-icon"></i>
+        <div class="shaft-name">やわらかめ</div>
+        <div class="shaft-desc">フレックスが大きく初心者向け</div>
+      </div>
+      <div class="shaft-opt" id="shaft-mid" onclick="selectShaft('mid')">
+        <i class="ti ti-activity shaft-icon"></i>
+        <div class="shaft-name">ふつう</div>
+        <div class="shaft-desc">オールラウンドに対応</div>
+      </div>
+      <div class="shaft-opt selected" id="shaft-hard" onclick="selectShaft('hard')">
+        <i class="ti ti-bolt shaft-icon"></i>
+        <div class="shaft-name">かたい</div>
+        <div class="shaft-desc">高いスイングスピード向け</div>
+      </div>
+    </div>
+ 
+    <div class="section-label">バランスポイント</div>
+    <div class="balance-group">
+      <div class="bal-opt" id="bal-head" onclick="selectBal('head')">
+        <div class="bal-name">ヘッドヘビー</div>
+        <div class="bal-sub">パワー重視</div>
+      </div>
+      <div class="bal-opt selected" id="bal-even" onclick="selectBal('even')">
+        <div class="bal-name">イーブン</div>
+        <div class="bal-sub">オールラウンド</div>
+      </div>
+      <div class="bal-opt" id="bal-handle" onclick="selectBal('handle')">
+        <div class="bal-name">ハンドルヘビー</div>
+        <div class="bal-sub">コントロール重視</div>
+      </div>
+    </div>
+ 
+    <div class="section-label">重量クラス</div>
+    <div class="weight-group">
+      <span class="weight-chip" id="w2U" onclick="selectWeight('2U')">2U（90-94g）</span>
+      <span class="weight-chip" id="w3U" onclick="selectWeight('3U')">3U（85-89g）</span>
+      <span class="weight-chip selected" id="w4U" onclick="selectWeight('4U')">4U（80-84g）</span>
+      <span class="weight-chip" id="w5U" onclick="selectWeight('5U')">5U（75-79g）</span>
+    </div>
+ 
+    <div class="section-label">登録プレビュー</div>
+    <div class="preview-card">
+      <div class="preview-row">
+        <span class="preview-key">ラケット名</span>
+        <span class="preview-val" id="prev-name" style="color:var(--text3)">未入力</span>
+      </div>
+      <div class="preview-row">
+        <span class="preview-key">シャフト</span>
+        <span id="prev-shaft"><span class="tag tag-purple">かたい</span></span>
+      </div>
+      <div class="preview-row">
+        <span class="preview-key">バランス</span>
+        <span id="prev-bal"><span class="tag tag-green">イーブン</span></span>
+      </div>
+      <div class="preview-row">
+        <span class="preview-key">重量</span>
+        <span id="prev-weight"><span class="tag tag-amber">4U（80-84g）</span></span>
+      </div>
+    </div>
+ 
+    <button class="btn-primary" onclick="addRacket()">
+      <i class="ti ti-plus"></i> このラケットを追加
+    </button>
+ 
+    <div id="reg-section" style="display:none">
+      <div class="section-label" style="margin-top:1.5rem">
+        登録済みラケット（<span id="reg-count">0</span>本）
+      </div>
+      <div id="reg-list"></div>
+    </div>
+ 
+    <button class="btn-secondary" id="goto-step2" onclick="goStep(2)" style="margin-top:8px;display:none">
+      試打・分析へ進む →
+    </button>
+  </div>
+ 
+  <!-- ===== SCREEN 2: 試打・動画分析 ===== -->
+  <div class="screen" id="screen2">
+    <div class="section-label">ラケットごとに試打動画をアップロード</div>
+    <div class="racket-tabs" id="racket-tabs"></div>
+ 
+    <div id="racket-panel">
+      <div class="upload-area" id="upload-area" onclick="simulateUpload()">
+        <i class="ti ti-video-plus"></i>
+        <div class="mt" id="upload-label">試打動画をアップロード</div>
+        <div class="st">MP4 / MOV · スロー動画推奨 · 最大100MB</div>
+      </div>
+ 
+      <div class="video-card" id="vcard" style="display:none">
+        <div class="video-bar">
+          <div class="file-info">
+            <i class="ti ti-video"></i>
+            <div>
+              <div class="fname" id="vcard-name">trial.mp4</div>
+              <div class="fsize">28.4 MB</div>
+            </div>
+          </div>
+          <i class="ti ti-circle-check" style="color:#1D9E75;font-size:18px"></i>
+        </div>
+        <div class="vframe"><i class="ti ti-player-play"></i></div>
+      </div>
+ 
+      <button class="btn-primary" id="analyze-btn" onclick="startAnalysis()" disabled>
+        <i class="ti ti-brain"></i> このラケットを分析する
+      </button>
+ 
+      <div class="loading-box" id="lbox">
+        <div class="spinner"></div>
+        <div class="loading-steps">
+          <div class="lstep" id="ls1"><i class="ti ti-circle" style="font-size:12px"></i> 姿勢を検出中...</div>
+          <div class="lstep" id="ls2"><i class="ti ti-circle" style="font-size:12px"></i> スイングスピードを計測中...</div>
+          <div class="lstep" id="ls3"><i class="ti ti-circle" style="font-size:12px"></i> フォームスコアを算出中...</div>
+          <div class="lstep" id="ls4"><i class="ti ti-circle" style="font-size:12px"></i> プロ知識と照合中...</div>
+        </div>
+      </div>
+ 
+      <div id="result-panel" style="display:none">
+        <div class="section-label">フォームスコア</div>
+        <div class="score-grid">
+          <div class="sc"><div class="sc-label">総合</div><div class="sc-num sc-ok" id="rs-total">—</div></div>
+          <div class="sc"><div class="sc-label">スイング速度</div><div class="sc-num sc-ok" id="rs-speed">—</div></div>
+          <div class="sc"><div class="sc-label">打点安定性</div><div class="sc-num sc-good" id="rs-stable">—</div></div>
+        </div>
+        <div class="fb-list" id="fb-list"></div>
+        <div class="nav-row">
+          <button class="nav-btn" onclick="nextRacket()">次のラケット</button>
+          <button class="nav-btn-primary" onclick="goStep(3)">比較・診断へ →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ===== SCREEN 3: 比較・診断 ===== -->
+  <div class="screen" id="screen3">
+    <div class="section-label">フォームスコア比較</div>
+    <div class="compare-table">
+      <div class="ct-grid" id="compare-grid">
+        <!-- JS で生成 -->
+      </div>
+    </div>
+ 
+    <div class="section-label">AIの診断</div>
+    <div class="result-card">
+      <span class="result-badge">プロ監修 AI推薦</span>
+      <div class="result-name" id="rec-name">—</div>
+      <div class="result-reason" id="rec-reason">分析結果を集計中...</div>
+    </div>
+ 
+    <button class="btn-primary" onclick="alert('練習メニュー機能は実装予定です')">
+      <i class="ti ti-list-check"></i> このラケット向けの練習メニュー
+    </button>
+    <button class="btn-secondary" onclick="alert('購入先検索は実装予定です')">購入先・価格を調べる</button>
+  </div>
+ 
+</div>
+ 
+<script>
+// ── Racket Database ──
+let racketDB = [];
+
+async function loadRacketDB() {
+  try {
+    const res = await fetch('rackets.json');
+    racketDB = await res.json();
+    console.log('ラケットDB読み込み完了', racketDB);
+  } catch (e) {
+    console.error('JSON読み込み失敗', e);
+  }
+}
+
+
+
+
+  // ── State ──
+  let shaft = 'hard', bal = 'even', weight = '4U';
+  let rackets = [];
+  let analysisResults = {};
+  let currentRacketIdx = 0;
+  let uploadedRackets = new Set();
+ 
+  const shaftLabels = { soft:'やわらかめ', mid:'ふつう', hard:'かたい' };
+  const balLabels   = { head:'ヘッドヘビー', even:'イーブン', handle:'ハンドルヘビー' };
+  const weightLabels = { '2U':'2U（90-94g）','3U':'3U（85-89g）','4U':'4U（80-84g）','5U':'5U（75-79g）' };
+ 
+  // ── Screen navigation ──
+  function goStep(n) {
+    if (n === 2 && rackets.length === 0) { alert('まず1本以上ラケットを登録してください'); return; }
+    for (let i = 1; i <= 3; i++) document.getElementById('screen'+i).classList.remove('active');
+    document.getElementById('screen'+n).classList.add('active');
+    updateStepUI(n);
+    if (n === 2) initAnalysisScreen();
+    if (n === 3) renderCompare();
+  }
+ 
+  function updateStepUI(n) {
+    for (let i = 1; i <= 3; i++) {
+      const sc = document.getElementById('sc'+i);
+      const sl = document.getElementById('sl'+i);
+      sc.className = 'step-circle';
+      sl.className = 'step-label';
+      if (i < n)      { sc.classList.add('done'); sc.innerHTML='<i class="ti ti-check" style="font-size:13px"></i>'; sl.classList.add('done'); }
+      else if (i===n) { sc.classList.add('active'); sc.textContent=i; sl.classList.add('active'); }
+      else            { sc.textContent=i; }
+    }
+    for (let i = 1; i <= 2; i++) {
+      document.getElementById('line'+i).className = 'step-line' + (i < n ? ' done' : '');
+    }
+  }
+ 
+  // ── Screen 1: Registration ──
+  function selectShaft(v) {
+    shaft = v;
+    ['soft','mid','hard'].forEach(s => document.getElementById('shaft-'+s).classList.toggle('selected', s===v));
+    updatePreview();
+  }
+  function selectBal(v) {
+    bal = v;
+    ['head','even','handle'].forEach(b => document.getElementById('bal-'+b).classList.toggle('selected', b===v));
+    updatePreview();
+  }
+  function selectWeight(v) {
+    weight = v;
+    ['2U','3U','4U','5U'].forEach(w => document.getElementById('w'+w).classList.toggle('selected', w===v));
+    updatePreview();
+  }
+  function updatePreview() {
+    const name = document.getElementById('rname').value;
+    const pn = document.getElementById('prev-name');
+    pn.textContent = name || '未入力';
+    pn.style.color = name ? 'var(--text)' : 'var(--text3)';
+    document.getElementById('prev-shaft').innerHTML  = `<span class="tag tag-purple">${shaftLabels[shaft]}</span>`;
+    document.getElementById('prev-bal').innerHTML    = `<span class="tag tag-green">${balLabels[bal]}</span>`;
+    document.getElementById('prev-weight').innerHTML = `<span class="tag tag-amber">${weightLabels[weight]}</span>`;
+  }
+
+
+
+function handleNameInput() {
+  updatePreview();
+
+  const inputName = document.getElementById('rname').value.trim().toLowerCase();
+
+  if (!inputName) return;
+
+  // 部分一致検索
+  const found = racketDB.find(r =>
+    r.name.toLowerCase().includes(inputName)
+  );
+
+  if (found) {
+    autoFillRacket(found);
+  }
+}
+function autoFillRacket(data) {
+
+  // シャフト
+  shaft = data.shaft;
+  ['soft','mid','hard'].forEach(s => {
+    document.getElementById('shaft-' + s)
+      .classList.toggle('selected', s === shaft);
+  });
+
+  // バランス
+  bal = data.bal;
+  ['head','even','handle'].forEach(b => {
+    document.getElementById('bal-' + b)
+      .classList.toggle('selected', b === bal);
+  });
+
+  // 重量
+  weight = data.weight;
+  ['2U','3U','4U','5U'].forEach(w => {
+    document.getElementById('w' + w)
+      .classList.toggle('selected', w === weight);
+  });
+
+  updatePreview();
+}
+
+
+
+
+
+
+  function addRacket() {
+    const name = document.getElementById('rname').value.trim();
+    if (!name) { document.getElementById('rname').focus(); return; }
+    rackets.push({ name, shaft, bal, weight });
+    renderRegList();
+    document.getElementById('rname').value = '';
+    updatePreview();
+    document.getElementById('goto-step2').style.display = 'block';
+  }
+  function removeRacket(i) {
+    rackets.splice(i, 1);
+    if (rackets.length === 0) document.getElementById('goto-step2').style.display = 'none';
+    renderRegList();
+  }
+  function renderRegList() {
+    const section = document.getElementById('reg-section');
+    const list    = document.getElementById('reg-list');
+    document.getElementById('reg-count').textContent = rackets.length;
+    section.style.display = rackets.length ? 'block' : 'none';
+    list.innerHTML = rackets.map((r, i) => `
+      <div class="reg-card">
+        <div class="reg-icon"><i class="ti ti-tournament"></i></div>
+        <div style="flex:1">
+          <div class="reg-name">${r.name}</div>
+          <div class="reg-tags">
+            <span class="tag tag-purple">${shaftLabels[r.shaft]}</span>
+            <span class="tag tag-green">${balLabels[r.bal]}</span>
+            <span class="tag tag-amber">${weightLabels[r.weight]}</span>
+          </div>
+        </div>
+        <button class="reg-del" onclick="removeRacket(${i})"><i class="ti ti-x"></i></button>
+      </div>`).join('');
+  }
+ 
+  // ── Screen 2: Analysis ──
+  function initAnalysisScreen() {
+    currentRacketIdx = uploadedRackets.size > 0 ? [...uploadedRackets].length : 0;
+    if (currentRacketIdx >= rackets.length) currentRacketIdx = 0;
+    renderTabs();
+    loadRacketPanel(currentRacketIdx);
+  }
+  function renderTabs() {
+    const container = document.getElementById('racket-tabs');
+    container.innerHTML = rackets.map((r, i) => {
+      const isDone = uploadedRackets.has(i);
+      const isActive = i === currentRacketIdx;
+      const cls = isDone ? 'rtab done-tab' : (isActive ? 'rtab active' : 'rtab');
+      const check = isDone ? '<i class="ti ti-check" style="font-size:11px;margin-right:3px"></i>' : '';
+      const label = r.name.length > 10 ? r.name.substring(0, 10) + '…' : r.name;
+      return `<span class="${cls}" onclick="switchRacket(${i})">${check}${label}</span>`;
+    }).join('');
+  }
+  function switchRacket(idx) {
+    currentRacketIdx = idx;
+    renderTabs();
+    loadRacketPanel(idx);
+  }
+  function loadRacketPanel(idx) {
+    const r = rackets[idx];
+    document.getElementById('upload-label').textContent = `${r.name} の試打動画をアップロード`;
+    const uploaded = uploadedRackets.has(idx);
+    document.getElementById('upload-area').style.display = uploaded ? 'none' : 'block';
+    document.getElementById('vcard').style.display = uploaded ? 'block' : 'none';
+    document.getElementById('vcard-name').textContent = r.name.replace(/\s/g,'_').toLowerCase() + '.mp4';
+    document.getElementById('analyze-btn').disabled = !uploaded;
+    document.getElementById('analyze-btn').style.display = 'flex';
+    document.getElementById('lbox').style.display = 'none';
+    if (analysisResults[idx]) {
+      renderResult(idx);
+    } else {
+      document.getElementById('result-panel').style.display = 'none';
+    }
+  }
+  function simulateUpload() {
+    uploadedRackets.add(currentRacketIdx);
+    document.getElementById('upload-area').style.display = 'none';
+    document.getElementById('vcard').style.display = 'block';
+    document.getElementById('analyze-btn').disabled = false;
+    renderTabs();
+  }
+  const loadSteps = ['ls1','ls2','ls3','ls4'];
+  function startAnalysis() {
+    document.getElementById('analyze-btn').style.display = 'none';
+    const lb = document.getElementById('lbox');
+    lb.style.display = 'flex';
+    loadSteps.forEach(id => { document.getElementById(id).className = 'lstep'; document.getElementById(id).querySelector('i').className='ti ti-circle'; });
+    let step = 0;
+    const timer = setInterval(() => {
+      if (step < loadSteps.length) {
+        if (step > 0) {
+          const prev = document.getElementById(loadSteps[step-1]);
+          prev.className = 'lstep done';
+          prev.querySelector('i').className = 'ti ti-check';
+        }
+        document.getElementById(loadSteps[step]).className = 'lstep active';
+        step++;
+      } else {
+        clearInterval(timer);
+        // Generate mock result
+        const scores = { total: Math.floor(75+Math.random()*15), speed: Math.floor(75+Math.random()*15), stable: Math.floor(75+Math.random()*15) };
+        analysisResults[currentRacketIdx] = scores;
+        lb.style.display = 'none';
+        renderResult(currentRacketIdx);
+        renderTabs();
+      }
+    }, 900);
+  }
+  function renderResult(idx) {
+    const scores = analysisResults[idx];
+    document.getElementById('rs-total').textContent  = scores.total;
+    document.getElementById('rs-speed').textContent  = scores.speed + ' km/h';
+    document.getElementById('rs-stable').textContent = scores.stable;
+    document.getElementById('fb-list').innerHTML = `
+      <div class="fb"><div class="fb-dot fb-dot-g"></div><div><div class="fb-text">打点が高い位置で安定</div><div class="fb-sub">スイング軌道が安定しています</div></div></div>
+      <div class="fb"><div class="fb-dot fb-dot-o"></div><div><div class="fb-text">肘のひきがやや浅い</div><div class="fb-sub">バックスイング時に肘をもっと引いてみましょう</div></div></div>`;
+    document.getElementById('result-panel').style.display = 'block';
+  }
+  function nextRacket() {
+    const next = rackets.findIndex((_, i) => i > currentRacketIdx && !uploadedRackets.has(i));
+    if (next !== -1) switchRacket(next);
+    else goStep(3);
+  }
+ 
+  // ── Screen 3: Compare & Recommend ──
+  function renderCompare() {
+    const grid = document.getElementById('compare-grid');
+    const keys = Object.keys(analysisResults);
+    if (keys.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--text2);padding:1rem 0">まだ分析結果がありません。ステップ2で動画を分析してください。</div>';
+      return;
+    }
+    const metrics = [
+      { key:'total', label:'総合', icon:'ti-stars', unit:'' },
+      { key:'speed', label:'速度', icon:'ti-bolt', unit:' km/h' },
+      { key:'stable', label:'安定性', icon:'ti-target', unit:'' },
+    ];
+    let html = '<div></div>';
+    keys.forEach(idx => { html += `<div class="ct-head">${rackets[idx].name.split(' ').pop()}</div>`; });
+    metrics.forEach(m => {
+      html += `<div class="ct-label"><i class="ti ${m.icon}" style="font-size:12px"></i>${m.label}</div>`;
+      const vals = keys.map(idx => analysisResults[idx][m.key]);
+      const maxVal = Math.max(...vals);
+      keys.forEach((idx, i) => {
+        const v = vals[i];
+        const isBest = v === maxVal;
+        html += `<div style="padding:5px 2px">
+          <div class="ct-val ${isBest?'ct-best':'ct-norm'}">${v}${m.unit}</div>
+          <div class="bar-wrap"><div class="bar b${['a','b','c'][i%3]}" style="width:${v}%"></div></div>
+        </div>`;
+      });
+    });
+    grid.innerHTML = html;
+ 
+    // Recommendation
+    const bestIdx = keys.reduce((a, b) => analysisResults[a].total >= analysisResults[b].total ? a : b);
+    const best = rackets[bestIdx];
+    document.getElementById('rec-name').textContent = best.name;
+    document.getElementById('rec-reason').textContent =
+      `スイングスピードと打点安定性のバランスが最も高く（総合${analysisResults[bestIdx].total}点）、` +
+      `${shaftLabels[best.shaft]}シャフト・${balLabels[best.bal]}のバランスがあなたのフォームに合っています。`;
+  }
+ 
+  // ── Init ──
+loadRacketDB();
+updatePreview();
+</script>
+</body>
+</html>
+ 
