@@ -1,1470 +1,409 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>ラケット診断 - 試打 × AIフォーム分析</title>
-
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-
-<style>
-*, *::before, *::after{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-}
-
-:root{
-  --bg:#ffffff;
-  --bg2:#f5f5f3;
-  --bg3:#efefec;
-  --text:#1a1a19;
-  --text2:#6b6b67;
-  --text3:#9e9d98;
-  --border:rgba(0,0,0,0.12);
-  --border2:rgba(0,0,0,0.22);
-
-  --radius-md:8px;
-  --radius-lg:12px;
-
-  --purple:#534AB7;
-  --purple-light:#EEEDFE;
-  --purple-text:#3C3489;
-
-  --teal:#1D9E75;
-  --teal-light:#E1F5EE;
-  --teal-text:#085041;
-
-  --amber-light:#FAEEDA;
-  --amber-text:#633806;
-}
-
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:var(--bg3);
-  color:var(--text);
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
-  padding:24px 16px;
-}
-
-.container{
-  width:100%;
-  max-width:480px;
-}
-
-.header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:1.5rem;
-}
-
-.logo{
-  width:36px;
-  height:36px;
-  background:var(--purple);
-  border-radius:8px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.logo i{
-  color:white;
-  font-size:20px;
-}
-
-.header-title{
-  font-size:17px;
-  font-weight:600;
-}
-
-.header-sub{
-  font-size:13px;
-  color:var(--text2);
-}
-
-.step-row{
-  display:flex;
-  align-items:center;
-  margin-bottom:1.5rem;
-}
-
-.step{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:4px;
-  flex:1;
-  cursor:pointer;
-}
-
-.step-circle{
-  width:28px;
-  height:28px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:12px;
-  font-weight:600;
-  border:1px solid var(--border);
-  background:var(--bg2);
-  color:var(--text3);
-}
-
-.step-circle.active{
-  background:var(--purple);
-  color:white;
-  border-color:var(--purple);
-}
-
-.step-circle.done{
-  background:var(--teal);
-  color:white;
-  border-color:var(--teal);
-}
-
-.step-label{
-  font-size:11px;
-  color:var(--text3);
-}
-
-.step-label.active{
-  color:var(--purple);
-  font-weight:600;
-}
-
-.step-label.done{
-  color:var(--teal-text);
-}
-
-.step-line{
-  flex:1;
-  height:1px;
-  background:var(--border);
-  margin-bottom:16px;
-}
-
-.step-line.done{
-  background:var(--teal);
-}
-
-.screen{
-  display:none;
-}
-
-.screen.active{
-  display:block;
-}
-
-.section-label{
-  font-size:12px;
-  color:var(--text2);
-  margin-bottom:8px;
-  letter-spacing:0.04em;
-  text-transform:uppercase;
-}
-
-.field{
-  margin-bottom:1.25rem;
-}
-
-.field label{
-  display:block;
-  margin-bottom:6px;
-  font-size:13px;
-  color:var(--text2);
-}
-
-input[type="text"]{
-  width:100%;
-  padding:10px 12px;
-  border:1px solid var(--border2);
-  border-radius:8px;
-  font-size:14px;
-  background:var(--bg);
-  color:var(--text);
-  outline:none;
-}
-
-input[type="text"]:focus{
-  border-color:var(--purple);
-}
-
-.shaft-group,
-.balance-group{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  margin-bottom:1.25rem;
-}
-
-.shaft-opt,
-.bal-opt{
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:12px 10px;
-  text-align:center;
-  cursor:pointer;
-  background:var(--bg);
-}
-
-.shaft-opt.selected{
-  border:2px solid var(--purple);
-  background:var(--purple-light);
-}
-
-.bal-opt.selected{
-  border:2px solid var(--teal);
-  background:var(--teal-light);
-}
-
-.shaft-icon{
-  font-size:22px;
-  margin-bottom:6px;
-  display:block;
-}
-
-.shaft-name,
-.bal-name{
-  font-size:13px;
-  font-weight:600;
-}
-
-.shaft-desc,
-.bal-sub{
-  font-size:11px;
-  color:var(--text2);
-  margin-top:4px;
-}
-
-.weight-group{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-  margin-bottom:1.25rem;
-}
-
-.weight-chip{
-  padding:6px 14px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:var(--bg2);
-  cursor:pointer;
-  font-size:12px;
-}
-
-.weight-chip.selected{
-  background:var(--amber-light);
-  color:var(--amber-text);
-}
-
-.preview-card,
-.compare-table,
-.result-card{
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:14px;
-  margin-bottom:1rem;
-}
-
-.preview-row{
-  display:flex;
-  justify-content:space-between;
-  padding:6px 0;
-}
-
-.preview-row:not(:last-child){
-  border-bottom:1px solid var(--border);
-}
-
-.preview-key{
-  color:var(--text2);
-  font-size:13px;
-}
-
-.preview-val{
-  font-size:13px;
-  font-weight:600;
-}
-
-.tag{
-  font-size:11px;
-  padding:3px 8px;
-  border-radius:999px;
-}
-
-.tag-purple{
-  background:var(--purple-light);
-  color:var(--purple-text);
-}
-
-.tag-green{
-  background:var(--teal-light);
-  color:var(--teal-text);
-}
-
-.tag-amber{
-  background:var(--amber-light);
-  color:var(--amber-text);
-}
-
-.reg-card{
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:12px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:8px;
-}
-
-.reg-icon{
-  width:32px;
-  height:32px;
-  border-radius:8px;
-  background:var(--purple-light);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.reg-del{
-  background:none;
-  border:none;
-  cursor:pointer;
-  font-size:18px;
-}
-
-.btn-primary,
-.btn-secondary,
-.nav-btn,
-.nav-btn-primary{
-  width:100%;
-  padding:11px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  font-size:14px;
-}
-
-.btn-primary,
-.nav-btn-primary{
-  background:var(--purple);
-  color:white;
-}
-
-.btn-secondary,
-.nav-btn{
-  background:transparent;
-  border:1px solid var(--border2);
-  color:var(--text);
-}
-
-.upload-area{
-  border:2px dashed var(--border2);
-  border-radius:12px;
-  padding:2rem;
-  text-align:center;
-  margin-bottom:1rem;
-  cursor:pointer;
-}
-
-.upload-area i{
-  font-size:32px;
-  margin-bottom:8px;
-}
-
-.video-card{
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:12px;
-  overflow:hidden;
-  margin-bottom:1rem;
-}
-
-.video-bar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 14px;
-}
-
-.vframe{
-  height:160px;
-  background:#1a1a1a;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-
-.vframe i{
-  font-size:40px;
-  color:rgba(255,255,255,0.3);
-}
-
-.racket-tabs{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  margin-bottom:1rem;
-}
-
-.rtab{
-  padding:5px 12px;
-  border-radius:999px;
-  border:1px solid var(--border);
-  cursor:pointer;
-  font-size:12px;
-}
-
-.rtab.active{
-  background:var(--purple-light);
-}
-
-.rtab.done-tab{
-  background:var(--teal-light);
-}
-
-.loading-box{
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
-  padding:2rem;
-}
-
-.spinner{
-  width:30px;
-  height:30px;
-  border:3px solid var(--border);
-  border-top-color:var(--purple);
-  border-radius:50%;
-  animation:spin .8s linear infinite;
-}
-
-@keyframes spin{
-  to{
-    transform:rotate(360deg);
-  }
-}
-
-.lstep{
-  font-size:12px;
-  color:var(--text3);
-  margin-bottom:6px;
-}
-
-.lstep.active{
-  color:var(--text);
-}
-
-.lstep.done{
-  color:var(--teal);
-}
-
-.score-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-  margin-bottom:1rem;
-}
-
-.sc{
-  background:var(--bg2);
-  border-radius:8px;
-  padding:10px;
-  text-align:center;
-}
-
-.sc-label{
-  font-size:11px;
-  color:var(--text2);
-}
-
-.sc-num{
-  font-size:22px;
-  font-weight:700;
-}
-
-.fb{
-  display:flex;
-  gap:8px;
-  padding:10px;
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:8px;
-  margin-bottom:8px;
-}
-
-.fb-dot{
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  margin-top:6px;
-}
-
-.fb-dot-g{background:#1D9E75;}
-.fb-dot-o{background:#EF9F27;}
-
-.nav-row{
-  display:flex;
-  gap:8px;
-}
-
-.ct-grid{
-  display:grid;
-  grid-template-columns:90px repeat(3,1fr);
-  gap:6px;
-}
-
-.ct-head{
-  font-size:11px;
-  text-align:center;
-  font-weight:600;
-}
-
-.ct-label{
-  font-size:12px;
-}
-
-.ct-val{
-  text-align:center;
-  font-size:13px;
-  font-weight:600;
-}
-
-.bar-wrap{
-  height:5px;
-  background:var(--bg2);
-  border-radius:999px;
-  overflow:hidden;
-}
-
-.bar{
-  height:100%;
-}
-
-.ba{background:#7F77DD;}
-.bb{background:#1D9E75;}
-.bc{background:#EF9F27;}
-
-.result-card{
-  border:2px solid var(--purple);
-}
-
-.result-badge{
-  display:inline-block;
-  margin-bottom:8px;
-  padding:4px 10px;
-  border-radius:999px;
-  background:var(--purple-light);
-  color:var(--purple-text);
-  font-size:11px;
-  font-weight:600;
-}
-
-.result-name{
-  font-size:16px;
-  font-weight:700;
-  margin-bottom:6px;
-}
-
-.result-reason{
-  font-size:13px;
-  line-height:1.6;
-  color:var(--text2);
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ラケット登録 - 自動スペック入力</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #ffffff; --bg2: #f5f5f3; --bg3: #efefec;
+      --text: #1a1a19; --text2: #6b6b67; --text3: #9e9d98;
+      --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+      --radius-md: 8px; --radius-lg: 12px;
+      --purple: #534AB7; --purple-light: #EEEDFE; --purple-text: #3C3489;
+      --teal: #1D9E75; --teal-light: #E1F5EE; --teal-text: #085041;
+      --amber: #EF9F27; --amber-light: #FAEEDA; --amber-text: #633806;
+      --coral-light: #FAECE7; --coral-text: #712B13;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+        --text: #e8e6de; --text2: #9e9d98; --text3: #6b6b67;
+        --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+        --purple-light: #2a2660; --purple-text: #AFA9EC;
+        --teal-light: #083d2c; --teal-text: #5DCAA5;
+        --amber-light: #3d2e0a; --amber-text: #FAC775;
+        --coral-light: #3d1a10; --coral-text: #F0997B;
+      }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; display: flex; justify-content: center; padding: 24px 16px; }
+    .container { width: 100%; max-width: 480px; }
+    .header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; }
+    .logo { width: 36px; height: 36px; background: var(--purple); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; }
+    .logo i { color: white; font-size: 20px; }
+    .section-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 8px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .field { margin-bottom: 1.25rem; }
+    .field label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+
+    /* Select */
+    .select-wrap { position: relative; }
+    .select-wrap select {
+      width: 100%; padding: 10px 36px 10px 12px;
+      border: 0.5px solid var(--border2); border-radius: var(--radius-md);
+      background: var(--bg); color: var(--text); font-size: 14px;
+      appearance: none; outline: none; cursor: pointer; transition: border-color 0.15s;
+    }
+    .select-wrap select:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(83,74,183,0.15); }
+    .select-wrap i { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 16px; pointer-events: none; }
+
+    /* Spec panel */
+    .spec-panel { display: none; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.25rem; }
+    .spec-panel.visible { display: block; }
+    .spec-header { background: var(--purple-light); padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+    .spec-brand { font-size: 11px; font-weight: 500; color: var(--purple-text); }
+    .spec-name { font-size: 15px; font-weight: 500; color: var(--purple-text); }
+    .spec-price { margin-left: auto; font-size: 13px; font-weight: 500; color: var(--purple-text); }
+    .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .spec-item { padding: 12px 16px; border-bottom: 0.5px solid var(--border); display: flex; flex-direction: column; gap: 3px; }
+    .spec-item:nth-child(odd) { border-right: 0.5px solid var(--border); }
+    .spec-key { font-size: 11px; color: var(--text3); }
+    .spec-val { font-size: 14px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .balance-bar { height: 4px; background: var(--bg2); border-radius: 2px; width: 80px; position: relative; overflow: hidden; }
+    .balance-fill { height: 100%; border-radius: 2px; background: var(--purple); position: absolute; transition: width 0.4s; }
+    .shaft-dots { display: flex; gap: 3px; }
+    .shaft-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border2); }
+    .shaft-dot.on { background: var(--purple); }
+
+    /* Gut & Grip proposal */
+    .proposal-section { margin-bottom: 1.25rem; }
+    .proposal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .proposal-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; }
+    .proposal-card.highlight { border: 2px solid var(--teal); background: var(--teal-light); }
+    .prop-icon { font-size: 20px; color: var(--text3); margin-bottom: 8px; display: block; }
+    .proposal-card.highlight .prop-icon { color: var(--teal); }
+    .prop-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+    .prop-val { font-size: 18px; font-weight: 500; color: var(--text); }
+    .proposal-card.highlight .prop-val { color: var(--teal-text); }
+    .prop-sub { font-size: 11px; color: var(--text2); margin-top: 3px; line-height: 1.4; }
+
+    /* Tension slider */
+    .tension-wrap { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 1.25rem; }
+    .tension-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .tension-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
+    input[type="range"] { flex: 1; accent-color: var(--purple); }
+    .tension-val { font-size: 14px; font-weight: 500; color: var(--text); min-width: 36px; text-align: right; }
+    .tension-range-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); }
+    .tension-advice { margin-top: 10px; font-size: 12px; color: var(--text2); line-height: 1.5; padding: 8px 10px; background: var(--bg2); border-radius: var(--radius-md); }
+
+    /* Grip selector */
+    .grip-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .grip-chip { font-size: 12px; padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--bg2); color: var(--text2); cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .grip-chip:hover { border-color: var(--border2); }
+    .grip-chip.selected { background: var(--amber-light); color: var(--amber-text); border-color: var(--amber); }
+    .grip-chip.recommended { border-color: var(--teal); }
+    .grip-chip.recommended.selected { background: var(--teal-light); color: var(--teal-text); border-color: var(--teal); }
+    .grip-rec-badge { font-size: 9px; color: var(--teal-text); background: var(--teal-light); padding: 1px 5px; border-radius: 10px; }
+
+    /* Buttons */
+    .btn-primary { width: 100%; padding: 11px; background: var(--purple); color: white; border: none; border-radius: var(--radius-md); font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; transition: opacity 0.15s; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-secondary { width: 100%; padding: 10px; border: 0.5px solid var(--border2); border-radius: var(--radius-md); background: transparent; color: var(--text); font-size: 13px; cursor: pointer; }
+    .btn-secondary:hover { background: var(--bg2); }
+
+    /* Added list */
+    .added-list { display: flex; flex-direction: column; gap: 8px; margin-top: 1.5rem; }
+    .added-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+    .added-icon { width: 32px; height: 32px; background: var(--purple-light); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .added-icon i { color: var(--purple); font-size: 15px; }
+    .added-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .added-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+    .tag-purple { background: var(--purple-light); color: var(--purple-text); }
+    .tag-teal { background: var(--teal-light); color: var(--teal-text); }
+    .tag-amber { background: var(--amber-light); color: var(--amber-text); }
+    .del-btn { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; padding: 4px; }
+  </style>
 </head>
-
 <body>
-
 <div class="container">
 
-<div class="header">
-  <div class="logo">
-    <i class="ti ti-tournament"></i>
-  </div>
-
-  <div>
-    <div class="header-title">ラケット診断</div>
-    <div class="header-sub">
-      試打 × AIフォーム分析で最適な1本を
+  <div class="header">
+    <div class="logo"><i class="ti ti-tournament"></i></div>
+    <div>
+      <div style="font-size:17px;font-weight:500;color:var(--text)">ラケット登録</div>
+      <div style="font-size:13px;color:var(--text2)">商品名を選ぶとスペックが自動入力されます</div>
     </div>
   </div>
-</div>
 
-<div class="step-row">
-
-  <div class="step" onclick="goStep(1)">
-    <div class="step-circle active" id="sc1">1</div>
-    <div class="step-label active" id="sl1">ラケット登録</div>
+  <!-- 商品名選択 -->
+  <div class="field">
+    <label>ブランド</label>
+    <div class="select-wrap">
+      <select id="brand-select" onchange="filterModels()">
+        <option value="">ブランドを選択...</option>
+        <option value="YONEX">YONEX</option>
+        <option value="Victor">Victor</option>
+        <option value="Li-Ning">Li-Ning</option>
+        <option value="Mizuno">Mizuno</option>
+      </select>
+      <i class="ti ti-chevron-down"></i>
+    </div>
   </div>
-
-  <div class="step-line" id="line1"></div>
-
-  <div class="step" onclick="goStep(2)">
-    <div class="step-circle" id="sc2">2</div>
-    <div class="step-label" id="sl2">試打・分析</div>
-  </div>
-
-  <div class="step-line" id="line2"></div>
-
-  <div class="step" onclick="goStep(3)">
-    <div class="step-circle" id="sc3">3</div>
-    <div class="step-label" id="sl3">比較・診断</div>
-  </div>
-
-</div>
-
-<!-- SCREEN 1 -->
-
-<div class="screen active" id="screen1">
 
   <div class="field">
-    <label>ラケット名</label>
-
-    <input
-      type="text"
-      id="rname"
-      placeholder="例：YONEX ASTROX 88D Pro"
-      oninput="handleNameInput()"
-    >
-  </div>
-
-  <div class="section-label">シャフトの硬さ</div>
-
-  <div class="shaft-group">
-
-    <div class="shaft-opt" id="shaft-soft" onclick="selectShaft('soft')">
-      <i class="ti ti-wave-sine shaft-icon"></i>
-      <div class="shaft-name">やわらかめ</div>
-      <div class="shaft-desc">初心者向け</div>
-    </div>
-
-    <div class="shaft-opt" id="shaft-mid" onclick="selectShaft('mid')">
-      <i class="ti ti-activity shaft-icon"></i>
-      <div class="shaft-name">ふつう</div>
-      <div class="shaft-desc">オールラウンド</div>
-    </div>
-
-    <div class="shaft-opt selected" id="shaft-hard" onclick="selectShaft('hard')">
-      <i class="ti ti-bolt shaft-icon"></i>
-      <div class="shaft-name">かたい</div>
-      <div class="shaft-desc">上級者向け</div>
-    </div>
-
-  </div>
-
-  <div class="section-label">バランス</div>
-
-  <div class="balance-group">
-
-    <div class="bal-opt" id="bal-head" onclick="selectBal('head')">
-      <div class="bal-name">ヘッドヘビー</div>
-      <div class="bal-sub">パワー重視</div>
-    </div>
-
-    <div class="bal-opt selected" id="bal-even" onclick="selectBal('even')">
-      <div class="bal-name">イーブン</div>
-      <div class="bal-sub">万能型</div>
-    </div>
-
-    <div class="bal-opt" id="bal-handle" onclick="selectBal('handle')">
-      <div class="bal-name">ハンドルヘビー</div>
-      <div class="bal-sub">操作性重視</div>
-    </div>
-
-  </div>
-
-  <div class="section-label">重量</div>
-
-  <div class="weight-group">
-    <span class="weight-chip" id="w2U" onclick="selectWeight('2U')">2U</span>
-    <span class="weight-chip" id="w3U" onclick="selectWeight('3U')">3U</span>
-    <span class="weight-chip selected" id="w4U" onclick="selectWeight('4U')">4U</span>
-    <span class="weight-chip" id="w5U" onclick="selectWeight('5U')">5U</span>
-  </div>
-
-  <div class="section-label">プレビュー</div>
-
-  <div class="preview-card">
-
-    <div class="preview-row">
-      <span class="preview-key">名前</span>
-      <span class="preview-val" id="prev-name">未入力</span>
-    </div>
-
-    <div class="preview-row">
-      <span class="preview-key">シャフト</span>
-      <span id="prev-shaft"></span>
-    </div>
-
-    <div class="preview-row">
-      <span class="preview-key">バランス</span>
-      <span id="prev-bal"></span>
-    </div>
-
-    <div class="preview-row">
-      <span class="preview-key">重量</span>
-      <span id="prev-weight"></span>
-    </div>
-
-  </div>
-
-  <button class="btn-primary" onclick="addRacket()">
-    ラケット追加
-  </button>
-
-  <div id="reg-section" style="display:none">
-
-    <div class="section-label">
-      登録済み
-    </div>
-
-    <div id="reg-list"></div>
-
-  </div>
-
-  <button
-    class="btn-secondary"
-    id="goto-step2"
-    style="display:none"
-    onclick="goStep(2)"
-  >
-    試打分析へ
-  </button>
-
-</div>
-
-<!-- SCREEN 2 -->
-
-<div class="screen" id="screen2">
-
-  <div class="section-label">試打動画</div>
-
-  <div class="racket-tabs" id="racket-tabs"></div>
-
-  <div class="upload-area" id="upload-area" onclick="simulateUpload()">
-    <i class="ti ti-video-plus"></i>
-
-    <div id="upload-label">
-      動画をアップロード
+    <label>モデル名</label>
+    <div class="select-wrap">
+      <select id="model-select" onchange="loadSpec()" disabled>
+        <option value="">先にブランドを選択...</option>
+      </select>
+      <i class="ti ti-chevron-down"></i>
     </div>
   </div>
 
-  <div class="video-card" id="vcard" style="display:none">
-
-    <div class="video-bar">
-      <div id="vcard-name">video.mp4</div>
-      <i class="ti ti-check"></i>
-    </div>
-
-    <div class="vframe">
-      <i class="ti ti-player-play"></i>
-    </div>
-
-  </div>
-
-  <button
-    class="btn-primary"
-    id="analyze-btn"
-    onclick="startAnalysis()"
-    disabled
-  >
-    AI分析
-  </button>
-
-  <div class="loading-box" id="lbox">
-
-    <div class="spinner"></div>
-
-    <div>
-
-      <div class="lstep" id="ls1">
-        姿勢検出中...
+  <!-- スペック自動表示 -->
+  <div class="spec-panel" id="spec-panel">
+    <div class="spec-header">
+      <div>
+        <div class="spec-brand" id="spec-brand"></div>
+        <div class="spec-name" id="spec-name"></div>
       </div>
-
-      <div class="lstep" id="ls2">
-        スイング速度解析中...
-      </div>
-
-      <div class="lstep" id="ls3">
-        スコア計算中...
-      </div>
-
-      <div class="lstep" id="ls4">
-        AI照合中...
-      </div>
-
+      <div class="spec-price" id="spec-price"></div>
     </div>
-
+    <div class="spec-grid">
+      <div class="spec-item">
+        <div class="spec-key">バランスポイント</div>
+        <div class="spec-val">
+          <span id="spec-balance-label"></span>
+          <div class="balance-bar"><div class="balance-fill" id="spec-balance-bar"></div></div>
+        </div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-key">重量クラス</div>
+        <div class="spec-val" id="spec-weight"></div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-key">シャフト硬度</div>
+        <div class="spec-val">
+          <div class="shaft-dots" id="spec-shaft-dots"></div>
+          <span id="spec-shaft-label"></span>
+        </div>
+      </div>
+      <div class="spec-item">
+        <div class="spec-key">バランス（mm）</div>
+        <div class="spec-val" id="spec-balance-mm"></div>
+      </div>
+    </div>
   </div>
 
-  <div id="result-panel" style="display:none">
-
-    <div class="score-grid">
-
-      <div class="sc">
-        <div class="sc-label">総合</div>
-        <div class="sc-num" id="rs-total">0</div>
+  <!-- ガット張力提案 -->
+  <div id="gut-section" style="display:none">
+    <div class="section-label">ガット張力の提案</div>
+    <div class="tension-wrap">
+      <div class="tension-row">
+        <label>張力</label>
+        <input type="range" id="tension-slider" min="15" max="35" step="1" oninput="updateTensionAdvice()">
+        <span class="tension-val"><span id="tension-display">24</span>lbs</span>
       </div>
-
-      <div class="sc">
-        <div class="sc-label">速度</div>
-        <div class="sc-num" id="rs-speed">0</div>
+      <div class="tension-range-label">
+        <span>15lbs（ゆるい）</span>
+        <span id="tension-rec-label"></span>
+        <span>35lbs（きつい）</span>
       </div>
-
-      <div class="sc">
-        <div class="sc-label">安定性</div>
-        <div class="sc-num" id="rs-stable">0</div>
-      </div>
-
+      <div class="tension-advice" id="tension-advice"></div>
     </div>
 
-    <div id="fb-list"></div>
-
-    <div class="nav-row">
-
-      <button class="nav-btn" onclick="nextRacket()">
-        次へ
-      </button>
-
-      <button class="nav-btn-primary" onclick="goStep(3)">
-        比較へ
-      </button>
-
+    <!-- グリップ提案 -->
+    <div class="section-label">グリップサイズの提案</div>
+    <div class="grip-group" id="grip-group">
+      <div class="grip-chip" id="grip-G6" onclick="selectGrip('G6')"><span>G6</span><span style="font-size:10px;color:var(--text3)">極細</span></div>
+      <div class="grip-chip" id="grip-G5" onclick="selectGrip('G5')"><span>G5</span><span style="font-size:10px;color:var(--text3)">細め</span></div>
+      <div class="grip-chip" id="grip-G4" onclick="selectGrip('G4')"><span>G4</span><span style="font-size:10px;color:var(--text3)">標準</span></div>
+      <div class="grip-chip" id="grip-G2" onclick="selectGrip('G2')"><span>G2</span><span style="font-size:10px;color:var(--text3)">太め</span></div>
+      <div class="grip-chip" id="grip-G1" onclick="selectGrip('G1')"><span>G1</span><span style="font-size:10px;color:var(--text3)">極太</span></div>
+      <div class="grip-chip" id="grip-S2" onclick="selectGrip('S2')"><span>S2</span><span style="font-size:10px;color:var(--text3)">Li-Ning</span></div>
     </div>
 
+    <div class="proposal-grid" style="margin-bottom:1.25rem">
+      <div class="proposal-card highlight">
+        <i class="ti ti-ripple prop-icon"></i>
+        <div class="prop-label">推奨ガット張力</div>
+        <div class="prop-val" id="prop-tension">—</div>
+        <div class="prop-sub" id="prop-tension-sub">ラケットを選択すると表示されます</div>
+      </div>
+      <div class="proposal-card highlight">
+        <i class="ti ti-hand-grip prop-icon"></i>
+        <div class="prop-label">推奨グリップ</div>
+        <div class="prop-val" id="prop-grip">—</div>
+        <div class="prop-sub" id="prop-grip-sub">ラケットを選択すると表示されます</div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="addRacket()">
+      <i class="ti ti-plus"></i> このラケットを試打リストに追加
+    </button>
+  </div>
+
+  <!-- 追加済みリスト -->
+  <div id="added-section" style="display:none; margin-top:1.5rem">
+    <div class="section-label">試打リスト（<span id="added-count">0</span>本）</div>
+    <div class="added-list" id="added-list"></div>
+    <button class="btn-secondary" style="margin-top:8px" onclick="alert('試打・分析画面へ進みます')">試打・分析へ進む →</button>
   </div>
 
 </div>
-
-<!-- SCREEN 3 -->
-
-<div class="screen" id="screen3">
-
-  <div class="section-label">
-    比較
-  </div>
-
-  <div class="compare-table">
-    <div class="ct-grid" id="compare-grid"></div>
-  </div>
-
-  <div class="section-label">
-    AIおすすめ
-  </div>
-
-  <div class="result-card">
-
-    <span class="result-badge">
-      AI推薦
-    </span>
-
-    <div class="result-name" id="rec-name"></div>
-
-    <div class="result-reason" id="rec-reason"></div>
-
-  </div>
-
-</div>
-
-</div>
-
 <script>
-
-let racketDB = [];
-
-async function loadRacketDB(){
-
-  try{
-
-    const res = await fetch('./rackets.json');
-
-    if(!res.ok){
-      throw new Error('rackets.json 読み込み失敗');
-    }
-
-    racketDB = await res.json();
-
-    console.log('DB loaded', racketDB);
-
-  }catch(err){
-
-    console.error(err);
-
-  }
-}
-
-let shaft = 'hard';
-let bal = 'even';
-let weight = '4U';
-
-let rackets = [];
-let analysisResults = {};
-
-let currentRacketIdx = 0;
-
-const uploadedRackets = new Set();
-
-const shaftLabels = {
-  soft:'やわらかめ',
-  mid:'ふつう',
-  hard:'かたい'
-};
-
-const balLabels = {
-  head:'ヘッドヘビー',
-  even:'イーブン',
-  handle:'ハンドルヘビー'
-};
-
-const weightLabels = {
-  '2U':'2U',
-  '3U':'3U',
-  '4U':'4U',
-  '5U':'5U'
-};
-
-function escapeHTML(str){
-
-  return str.replace(/[&<>"']/g, m => ({
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    '"':'&quot;',
-    "'":'&#39;'
-  }[m]));
-}
-
-function goStep(n){
-
-  if(n === 2 && rackets.length === 0){
-    alert('先にラケットを登録してください');
-    return;
-  }
-
-  for(let i=1;i<=3;i++){
-    document.getElementById(`screen${i}`).classList.remove('active');
-  }
-
-  document.getElementById(`screen${n}`).classList.add('active');
-
-  updateStepUI(n);
-
-  if(n === 2){
-    initAnalysisScreen();
-  }
-
-  if(n === 3){
-    renderCompare();
-  }
-}
-
-function updateStepUI(n){
-
-  for(let i=1;i<=3;i++){
-
-    const sc = document.getElementById(`sc${i}`);
-    const sl = document.getElementById(`sl${i}`);
-
-    sc.className = 'step-circle';
-    sl.className = 'step-label';
-
-    if(i < n){
-
-      sc.classList.add('done');
-      sc.innerHTML = '<i class="ti ti-check"></i>';
-
-      sl.classList.add('done');
-
-    }else if(i === n){
-
-      sc.classList.add('active');
-      sc.textContent = i;
-
-      sl.classList.add('active');
-
-    }else{
-
-      sc.textContent = i;
-    }
-  }
-
-  for(let i=1;i<=2;i++){
-
-    document.getElementById(`line${i}`)
-      .className = i < n ? 'step-line done' : 'step-line';
-  }
-}
-
-function selectShaft(v){
-
-  shaft = v;
-
-  ['soft','mid','hard'].forEach(s => {
-    document.getElementById(`shaft-${s}`)
-      .classList.toggle('selected', s === v);
-  });
-
-  updatePreview();
-}
-
-function selectBal(v){
-
-  bal = v;
-
-  ['head','even','handle'].forEach(b => {
-    document.getElementById(`bal-${b}`)
-      .classList.toggle('selected', b === v);
-  });
-
-  updatePreview();
-}
-
-function selectWeight(v){
-
-  weight = v;
-
-  ['2U','3U','4U','5U'].forEach(w => {
-    document.getElementById(`w${w}`)
-      .classList.toggle('selected', w === v);
-  });
-
-  updatePreview();
-}
-
-function updatePreview(){
-
-  const name = document.getElementById('rname').value.trim();
-
-  document.getElementById('prev-name').textContent =
-    name || '未入力';
-
-  document.getElementById('prev-shaft').innerHTML =
-    `<span class="tag tag-purple">${shaftLabels[shaft]}</span>`;
-
-  document.getElementById('prev-bal').innerHTML =
-    `<span class="tag tag-green">${balLabels[bal]}</span>`;
-
-  document.getElementById('prev-weight').innerHTML =
-    `<span class="tag tag-amber">${weightLabels[weight]}</span>`;
-}
-
-function handleNameInput(){
-
-  updatePreview();
-
-  const inputName =
-    document.getElementById('rname')
-      .value
-      .trim()
-      .toLowerCase();
-
-  if(!inputName) return;
-
-  const found = racketDB.find(r =>
-    r.name.toLowerCase() === inputName
-  );
-
-  if(found){
-    autoFillRacket(found);
-  }
-}
-
-function autoFillRacket(data){
-
-  selectShaft(data.shaft);
-  selectBal(data.bal);
-  selectWeight(data.weight);
-}
-
-function addRacket(){
-
-  const input =
-    document.getElementById('rname');
-
-  const name = input.value.trim();
-
-  if(!name){
-    input.focus();
-    return;
-  }
-
-  rackets.push({
-    name,
-    shaft,
-    bal,
-    weight
-  });
-
-  renderRegList();
-
-  input.value = '';
-
-  updatePreview();
-
-  document.getElementById('goto-step2')
-    .style.display = 'block';
-}
-
-function removeRacket(i){
-
-  rackets.splice(i,1);
-
-  renderRegList();
-
-  if(rackets.length === 0){
-
-    document.getElementById('goto-step2')
-      .style.display = 'none';
-  }
-}
-
-function renderRegList(){
-
-  const section =
-    document.getElementById('reg-section');
-
-  const list =
-    document.getElementById('reg-list');
-
-  section.style.display =
-    rackets.length ? 'block' : 'none';
-
-  list.innerHTML = rackets.map((r,i)=>`
-
-    <div class="reg-card">
-
-      <div class="reg-icon">
-        <i class="ti ti-tournament"></i>
-      </div>
-
-      <div style="flex:1">
-
-        <div>
-          ${escapeHTML(r.name)}
-        </div>
-
-        <div style="margin-top:4px">
-
-          <span class="tag tag-purple">
-            ${shaftLabels[r.shaft]}
-          </span>
-
-          <span class="tag tag-green">
-            ${balLabels[r.bal]}
-          </span>
-
-          <span class="tag tag-amber">
-            ${weightLabels[r.weight]}
-          </span>
-
-        </div>
-
-      </div>
-
-      <button class="reg-del"
-      onclick="removeRacket(${i})">
-        ×
-      </button>
-
-    </div>
-
-  `).join('');
-}
-
-function initAnalysisScreen(){
-
-  currentRacketIdx = 0;
-
-  renderTabs();
-
-  loadRacketPanel(currentRacketIdx);
-}
-
-function renderTabs(){
-
-  const container =
-    document.getElementById('racket-tabs');
-
-  container.innerHTML =
-    rackets.map((r,i)=>{
-
-      const done = analysisResults[i];
-
-      return `
-        <span
-          class="rtab ${i===currentRacketIdx?'active':''} ${done?'done-tab':''}"
-          onclick="switchRacket(${i})"
-        >
-          ${escapeHTML(r.name)}
-        </span>
-      `;
-    }).join('');
-}
-
-function switchRacket(idx){
-
-  currentRacketIdx = idx;
-
-  renderTabs();
-
-  loadRacketPanel(idx);
-}
-
-function loadRacketPanel(idx){
-
-  const r = rackets[idx];
-
-  document.getElementById('upload-label')
-    .textContent =
-      `${r.name} の動画をアップロード`;
-
-  const uploaded =
-    uploadedRackets.has(idx);
-
-  document.getElementById('upload-area')
-    .style.display =
-      uploaded ? 'none' : 'block';
-
-  document.getElementById('vcard')
-    .style.display =
-      uploaded ? 'block' : 'none';
-
-  document.getElementById('vcard-name')
-    .textContent =
-      `${r.name}.mp4`;
-
-  document.getElementById('analyze-btn')
-    .disabled = !uploaded;
-
-  if(analysisResults[idx]){
-
-    renderResult(idx);
-
-  }else{
-
-    document.getElementById('result-panel')
-      .style.display = 'none';
-  }
-}
-
-function simulateUpload(){
-
-  uploadedRackets.add(currentRacketIdx);
-
-  document.getElementById('upload-area')
-    .style.display = 'none';
-
-  document.getElementById('vcard')
-    .style.display = 'block';
-
-  document.getElementById('analyze-btn')
-    .disabled = false;
-}
-
-function startAnalysis(){
-
-  document.getElementById('lbox')
-    .style.display = 'flex';
-
-  const steps = ['ls1','ls2','ls3','ls4'];
-
-  let idx = 0;
-
-  const timer = setInterval(()=>{
-
-    if(idx > 0){
-
-      document.getElementById(steps[idx-1])
-        .className = 'lstep done';
-    }
-
-    if(idx < steps.length){
-
-      document.getElementById(steps[idx])
-        .className = 'lstep active';
-
-      idx++;
-
-    }else{
-
-      clearInterval(timer);
-
-      analysisResults[currentRacketIdx] = {
-        total: Math.floor(75 + Math.random()*20),
-        speed: Math.floor(75 + Math.random()*20),
-        stable: Math.floor(75 + Math.random()*20)
-      };
-
-      document.getElementById('lbox')
-        .style.display = 'none';
-
-      renderResult(currentRacketIdx);
-
-      renderTabs();
-    }
-
-  },700);
-}
-
-function renderResult(idx){
-
-  const s = analysisResults[idx];
-
-  document.getElementById('rs-total')
-    .textContent = s.total;
-
-  document.getElementById('rs-speed')
-    .textContent = `${s.speed}`;
-
-  document.getElementById('rs-stable')
-    .textContent = s.stable;
-
-  document.getElementById('fb-list').innerHTML = `
-
-    <div class="fb">
-
-      <div class="fb-dot fb-dot-g"></div>
-
-      <div>
-        <div>打点が安定しています</div>
-      </div>
-
-    </div>
-
-    <div class="fb">
-
-      <div class="fb-dot fb-dot-o"></div>
-
-      <div>
-        <div>肘の引きが浅いです</div>
-      </div>
-
-    </div>
-
-  `;
-
-  document.getElementById('result-panel')
-    .style.display = 'block';
-}
-
-function nextRacket(){
-
-  const next =
-    rackets.findIndex((_,i)=>
-      !analysisResults[i]
-    );
-
-  if(next !== -1){
-
-    switchRacket(next);
-
-  }else{
-
-    goStep(3);
-  }
-}
-
-function renderCompare(){
-
-  const grid =
-    document.getElementById('compare-grid');
-
-  const keys =
-    Object.keys(analysisResults);
-
-  if(keys.length === 0){
-
-    grid.innerHTML =
-      '分析結果なし';
-
-    return;
-  }
-
-  let html = '<div></div>';
-
-  keys.forEach(idx => {
-
-    html += `
-      <div class="ct-head">
-        ${escapeHTML(rackets[idx].name)}
-      </div>
-    `;
-  });
-
-  const metrics = [
-    ['total','総合'],
-    ['speed','速度'],
-    ['stable','安定性']
+  // ── ラケットDB（実際はAPIから取得 or rackets_db.jsonを読み込む）──
+  const RACKETS_DB = [
+    { id:"yonex-astrox-88d-pro", brand:"YONEX", name:"ASTROX 88D Pro", balance:"head-heavy", balance_mm:295, weight:"4U", weight_g:"80-84g", shaft:"hard", price:28600, gut_min:24, gut_max:28, grip:"G5" },
+    { id:"yonex-astrox-88s-pro", brand:"YONEX", name:"ASTROX 88S Pro", balance:"head-heavy", balance_mm:285, weight:"4U", weight_g:"80-84g", shaft:"medium-hard", price:28600, gut_min:22, gut_max:26, grip:"G5" },
+    { id:"yonex-nanoflare-1000z", brand:"YONEX", name:"NANOFLARE 1000Z", balance:"even", balance_mm:275, weight:"4U", weight_g:"80-84g", shaft:"hard", price:33000, gut_min:23, gut_max:27, grip:"G5" },
+    { id:"victor-thruster-k-9900", brand:"Victor", name:"THRUSTER K 9900", balance:"head-heavy", balance_mm:298, weight:"3U", weight_g:"85-89g", shaft:"medium-hard", price:25300, gut_min:22, gut_max:26, grip:"G1" },
+    { id:"victor-auraspeed-100x", brand:"Victor", name:"AURASPEED 100X", balance:"even", balance_mm:278, weight:"4U", weight_g:"80-84g", shaft:"medium", price:22000, gut_min:20, gut_max:25, grip:"G2" },
+    { id:"lining-bladex-900", brand:"Li-Ning", name:"Bladex 900", balance:"even", balance_mm:272, weight:"4U", weight_g:"80-84g", shaft:"soft", price:19800, gut_min:20, gut_max:24, grip:"S2" },
+    { id:"mizuno-altius-01-speed", brand:"Mizuno", name:"ALTIUS 01 SPEED", balance:"handle-heavy", balance_mm:260, weight:"5U", weight_g:"75-79g", shaft:"medium", price:24200, gut_min:19, gut_max:23, grip:"G2" },
   ];
 
-  metrics.forEach(([key,label])=>{
+  const balanceLabels = { "head-heavy":"ヘッドヘビー", "even":"イーブン", "handle-heavy":"ハンドルヘビー" };
+  const shaftLabels   = { "hard":"かたい", "medium-hard":"やや硬め", "medium":"ふつう", "soft":"やわらかめ" };
+  const shaftDots     = { "hard":3, "medium-hard":2, "medium":2, "soft":1 };
+  const gripAdvice    = { "G6":"細め。指が長い・コントロール重視の方向け", "G5":"スタンダードな細め。多くの選手に人気", "G4":"標準的なサイズ。初めての方にもおすすめ", "G2":"やや太め。手が大きめの方・パワー重視向け", "G1":"極太。手が大きい方・フォアハンドグリップ向け", "S2":"Li-Ning標準。G4〜G5相当のサイズ感" };
 
-    html += `
-      <div class="ct-label">
-        ${label}
-      </div>
-    `;
+  let currentRacket = null;
+  let selectedGrip = null;
+  let addedRackets = [];
 
-    keys.forEach((idx,i)=>{
+  function filterModels() {
+    const brand = document.getElementById('brand-select').value;
+    const sel = document.getElementById('model-select');
+    sel.innerHTML = brand ? '<option value="">モデルを選択...</option>' : '<option value="">先にブランドを選択...</option>';
+    sel.disabled = !brand;
+    if (brand) {
+      RACKETS_DB.filter(r => r.brand === brand).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id; opt.textContent = r.name;
+        sel.appendChild(opt);
+      });
+    }
+    document.getElementById('spec-panel').classList.remove('visible');
+    document.getElementById('gut-section').style.display = 'none';
+    currentRacket = null;
+  }
 
-      const val =
-        analysisResults[idx][key];
+  function loadSpec() {
+    const id = document.getElementById('model-select').value;
+    if (!id) return;
+    currentRacket = RACKETS_DB.find(r => r.id === id);
+    if (!currentRacket) return;
 
-      html += `
-        <div>
+    // Header
+    document.getElementById('spec-brand').textContent = currentRacket.brand;
+    document.getElementById('spec-name').textContent  = currentRacket.name;
+    document.getElementById('spec-price').textContent = '¥' + currentRacket.price.toLocaleString();
 
-          <div class="ct-val">
-            ${val}
-          </div>
+    // Balance bar（260mm=0%, 300mm=100%）
+    const pct = Math.round(((currentRacket.balance_mm - 260) / 40) * 100);
+    document.getElementById('spec-balance-label').textContent = balanceLabels[currentRacket.balance];
+    document.getElementById('spec-balance-bar').style.width = pct + '%';
+    document.getElementById('spec-balance-mm').textContent = currentRacket.balance_mm + ' mm';
 
-          <div class="bar-wrap">
-            <div
-              class="bar ${['ba','bb','bc'][i%3]}"
-              style="width:${val}%"
-            ></div>
-          </div>
+    // Weight
+    document.getElementById('spec-weight').textContent = currentRacket.weight + '（' + currentRacket.weight_g + '）';
 
-        </div>
-      `;
+    // Shaft dots
+    const dots = shaftDots[currentRacket.shaft];
+    document.getElementById('spec-shaft-dots').innerHTML = [1,2,3].map(i => `<div class="shaft-dot${i<=dots?' on':''}"></div>`).join('');
+    document.getElementById('spec-shaft-label').textContent = shaftLabels[currentRacket.shaft];
+
+    document.getElementById('spec-panel').classList.add('visible');
+
+    // Gut tension
+    const mid = Math.round((currentRacket.gut_min + currentRacket.gut_max) / 2);
+    const slider = document.getElementById('tension-slider');
+    slider.min = currentRacket.gut_min - 3;
+    slider.max = currentRacket.gut_max + 3;
+    slider.value = mid;
+    document.getElementById('tension-display').textContent = mid;
+    document.getElementById('tension-rec-label').textContent = `推奨：${currentRacket.gut_min}〜${currentRacket.gut_max}lbs`;
+    document.getElementById('prop-tension').textContent = `${currentRacket.gut_min}〜${currentRacket.gut_max} lbs`;
+    document.getElementById('prop-tension-sub').textContent = `メーカー推奨範囲。${currentRacket.gut_min}lbs寄りでコントロール重視、${currentRacket.gut_max}lbs寄りでパワー重視`;
+
+    // Grip
+    document.getElementById('prop-grip').textContent = currentRacket.grip;
+    document.getElementById('prop-grip-sub').textContent = gripAdvice[currentRacket.grip] || '';
+    setupGrip(currentRacket.grip);
+
+    updateTensionAdvice();
+    document.getElementById('gut-section').style.display = 'block';
+  }
+
+  function setupGrip(recommended) {
+    const grips = ['G6','G5','G4','G2','G1','S2'];
+    grips.forEach(g => {
+      const el = document.getElementById('grip-' + g);
+      el.className = 'grip-chip' + (g === recommended ? ' recommended selected' : '');
+      const badge = el.querySelector('.grip-rec-badge');
+      if (badge) badge.remove();
+      if (g === recommended) {
+        const b = document.createElement('span');
+        b.className = 'grip-rec-badge'; b.textContent = 'おすすめ';
+        el.appendChild(b);
+      }
     });
-  });
+    selectedGrip = recommended;
+  }
 
-  grid.innerHTML = html;
+  function selectGrip(g) {
+    selectedGrip = g;
+    const recommended = currentRacket ? currentRacket.grip : null;
+    ['G6','G5','G4','G2','G1','S2'].forEach(gk => {
+      const el = document.getElementById('grip-' + gk);
+      el.className = 'grip-chip' + (gk === recommended ? ' recommended' : '') + (gk === g ? ' selected' : '');
+    });
+    document.getElementById('prop-grip').textContent = g;
+    document.getElementById('prop-grip-sub').textContent = gripAdvice[g] || '';
+  }
 
-  const bestIdx =
-    keys.reduce((a,b)=>
-      analysisResults[a].total >
-      analysisResults[b].total
-      ? a : b
-    );
+  function updateTensionAdvice() {
+    if (!currentRacket) return;
+    const v = parseInt(document.getElementById('tension-slider').value);
+    document.getElementById('tension-display').textContent = v;
+    let advice = '';
+    if (v < currentRacket.gut_min) {
+      advice = `推奨より低め（${v}lbs）。シャトルが飛びやすくなりますが、コントロールが難しくなります。初心者・力がない方向け。`;
+    } else if (v > currentRacket.gut_max) {
+      advice = `推奨より高め（${v}lbs）。コントロールが上がりますが、ガットが切れやすくなります。上級者・高いスイングスピード向け。`;
+    } else {
+      const ratio = (v - currentRacket.gut_min) / (currentRacket.gut_max - currentRacket.gut_min);
+      if (ratio < 0.4) advice = `推奨範囲内（低め・${v}lbs）。やや飛びを重視した設定。オールラウンドなプレーに向いています。`;
+      else if (ratio > 0.6) advice = `推奨範囲内（高め・${v}lbs）。コントロール重視の設定。クリアやスマッシュの精度が上がります。`;
+      else advice = `推奨範囲内（${v}lbs）。バランスの取れた標準的な設定です。このラケットの特性を最大限に活かせます。`;
+    }
+    document.getElementById('tension-advice').textContent = advice;
+    document.getElementById('prop-tension').textContent = v + ' lbs';
+  }
 
-  const best = rackets[bestIdx];
+  function addRacket() {
+    if (!currentRacket) return;
+    const tension = parseInt(document.getElementById('tension-slider').value);
+    addedRackets.push({ ...currentRacket, tension, grip: selectedGrip });
+    renderAddedList();
+    document.getElementById('brand-select').value = '';
+    document.getElementById('model-select').innerHTML = '<option value="">先にブランドを選択...</option>';
+    document.getElementById('model-select').disabled = true;
+    document.getElementById('spec-panel').classList.remove('visible');
+    document.getElementById('gut-section').style.display = 'none';
+    currentRacket = null;
+  }
 
-  document.getElementById('rec-name')
-    .textContent = best.name;
+  function removeAdded(i) { addedRackets.splice(i,1); renderAddedList(); }
 
-  document.getElementById('rec-reason')
-    .textContent =
-      `${shaftLabels[best.shaft]}シャフトと${balLabels[best.bal]}の組み合わせが現在のフォームに最も適しています。`;
-}
-
-loadRacketDB();
-
-updatePreview();
-
-</script>
-
-</body>
-</html>
+  function renderAddedList() {
+    const section = document.getElementById('added-section');
+    const list    = document.getElementById('added-list');
+    document.getElementById('added-count').textContent = addedRackets.length;
+    section.style.display = addedRackets.length ? 'block' : 'none';
+    list.innerHTML = addedRackets.map((r, i) => `
+      <div class="added-card">
+        <div class="added-icon"><i class="ti ti-tournament"></i></div>
+        <div style="flex:1">
+          <div class="added-name">${r.brand} ${r.name}</div>
+          <div class="added-tags">
+            <span class="tag tag-purple">${shaftLabels[r.shaft]}</span>
+            <span class="tag tag-teal">ガット ${r.tension}lbs</span>
+            <span class="tag tag-amber">グリップ ${r.grip}</span>
+          </div>
+        </div>
+        <button class="del-btn" onclick="removeAdded(${i})"><i class="ti ti-x"></i></button>
+      </div>`).join('');
