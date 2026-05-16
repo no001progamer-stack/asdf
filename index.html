@@ -376,7 +376,9 @@
  
     <div class="field">
       <label>ラケット名</label>
-      <input type="text" id="rname" placeholder="例：YONEX ASTROX 88D Pro" oninput="updatePreview()">
+      <input type="text" id="rname"
+placeholder="例：YONEX ASTROX 88D Pro"
+oninput="handleNameInput()">
     </div>
  
     <div class="section-label">シャフトの硬さ</div>
@@ -539,6 +541,22 @@
 </div>
  
 <script>
+// ── Racket Database ──
+let racketDB = [];
+
+async function loadRacketDB() {
+  try {
+    const res = await fetch('rackets.json');
+    racketDB = await res.json();
+    console.log('ラケットDB読み込み完了', racketDB);
+  } catch (e) {
+    console.error('JSON読み込み失敗', e);
+  }
+}
+
+
+
+
   // ── State ──
   let shaft = 'hard', bal = 'even', weight = '4U';
   let rackets = [];
@@ -600,6 +618,56 @@
     document.getElementById('prev-bal').innerHTML    = `<span class="tag tag-green">${balLabels[bal]}</span>`;
     document.getElementById('prev-weight').innerHTML = `<span class="tag tag-amber">${weightLabels[weight]}</span>`;
   }
+
+
+
+function handleNameInput() {
+  updatePreview();
+
+  const inputName = document.getElementById('rname').value.trim().toLowerCase();
+
+  if (!inputName) return;
+
+  // 部分一致検索
+  const found = racketDB.find(r =>
+    r.name.toLowerCase().includes(inputName)
+  );
+
+  if (found) {
+    autoFillRacket(found);
+  }
+}
+function autoFillRacket(data) {
+
+  // シャフト
+  shaft = data.shaft;
+  ['soft','mid','hard'].forEach(s => {
+    document.getElementById('shaft-' + s)
+      .classList.toggle('selected', s === shaft);
+  });
+
+  // バランス
+  bal = data.bal;
+  ['head','even','handle'].forEach(b => {
+    document.getElementById('bal-' + b)
+      .classList.toggle('selected', b === bal);
+  });
+
+  // 重量
+  weight = data.weight;
+  ['2U','3U','4U','5U'].forEach(w => {
+    document.getElementById('w' + w)
+      .classList.toggle('selected', w === weight);
+  });
+
+  updatePreview();
+}
+
+
+
+
+
+
   function addRacket() {
     const name = document.getElementById('rname').value.trim();
     if (!name) { document.getElementById('rname').focus(); return; }
@@ -763,7 +831,8 @@
   }
  
   // ── Init ──
-  updatePreview();
+loadRacketDB();
+updatePreview();
 </script>
 </body>
 </html>
