@@ -628,10 +628,9 @@ function handleNameInput() {
 
   if (!inputName) return;
 
-  // 部分一致検索
-  const found = racketDB.find(r =>
-    r.name.toLowerCase().includes(inputName)
-  );
+const found = racketDB.find(r =>
+  r.name.toLowerCase() === inputName
+);
 
   if (found) {
     autoFillRacket(found);
