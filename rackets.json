@@ -1,20 +1,116 @@
 [
   {
-    "name": "edc",
+    "name": "アストロクス100ZZ",
     "shaft": "hard",
+    "bal": "head",
+    "weight": "3U"
+  },
+  {
+    "name": "アストロクス99プロ",
+    "shaft": "hard",
+    "bal": "head",
+    "weight": "3U"
+  },
+  {
+    "name": "アストロクス99ゲーム",
+    "shaft": "mid",
     "bal": "head",
     "weight": "4U"
   },
   {
-    "name": "qaz",
+    "name": "アストロクス88Sプロ",
+    "shaft": "hard",
+    "bal": "even",
+    "weight": "4U"
+  },
+  {
+    "name": "アストロクス88Sゲーム",
+    "shaft": "mid",
+    "bal": "even",
+    "weight": "4U"
+  },
+  {
+    "name": "アストロクス88Dプロ",
+    "shaft": "hard",
+    "bal": "head",
+    "weight": "3U"
+  },
+  {
+    "name": "アストロクス88Dゲーム",
+    "shaft": "mid",
+    "bal": "head",
+    "weight": "4U"
+  },
+  {
+    "name": "アストロクス77 PRO",
+    "shaft": "mid",
+    "bal": "even",
+    "weight": "4U"
+  },
+  {
+    "name": "アストロクス70",
+    "shaft": "mid",
+    "bal": "head",
+    "weight": "4U"
+  },
+  {
+    "name": "アストロクス55A",
+    "shaft": "soft",
+    "bal": "handle",
+    "weight": "5U"
+  },
+  {
+    "name": "アストロクス33",
+    "shaft": "soft",
+    "bal": "even",
+    "weight": "5U"
+  },
+  {
+    "name": "ナノフレア1000Z",
+    "shaft": "hard",
+    "bal": "handle",
+    "weight": "4U"
+  },
+  {
+    "name": "ナノフレア800プロ",
+    "shaft": "hard",
+    "bal": "handle",
+    "weight": "4U"
+  },
+  {
+    "name": "ナノフレア700",
     "shaft": "mid",
     "bal": "handle",
     "weight": "5U"
   },
   {
-    "name": "wsx",
+    "name": "アークセイバー11プロ",
+    "shaft": "mid",
+    "bal": "even",
+    "weight": "4U"
+  },
+  {
+    "name": "アークセイバー7プロ",
     "shaft": "soft",
     "bal": "even",
+    "weight": "4U"
+  },
+  {
+    "name": "デュオラ-Zストライク",
+    "shaft": "hard",
+    "bal": "head",
+    "weight": "3U"
+  },
+  {
+    "name": "ナノレイ-Zスピード",
+    "shaft": "hard",
+    "bal": "handle",
+    "weight": "3U"
+  },
+  {
+    "name": "ボルトリックグランツ",
+    "shaft": "soft",
+    "bal": "head",
     "weight": "4U"
   }
 ]
