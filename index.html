@@ -339,6 +339,50 @@
       font-size: 13px; font-weight: 500; cursor: pointer;
     }
     .nav-btn-primary:hover { opacity: 0.9; }
+
+
+
+    /* ── Suggestion ── */
+.suggestions-box{
+  position:absolute;
+  top:100%;
+  left:0;
+  right:0;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--radius-md);
+  margin-top:4px;
+  max-height:220px;
+  overflow-y:auto;
+  z-index:999;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+}
+
+.suggestion-item{
+  padding:10px 12px;
+  cursor:pointer;
+  border-bottom:1px solid var(--border);
+}
+
+.suggestion-item:last-child{
+  border-bottom:none;
+}
+
+.suggestion-item:hover{
+  background:var(--bg2);
+}
+
+.sug-name{
+  font-size:13px;
+  font-weight:500;
+  color:var(--text);
+}
+
+.sug-sub{
+  font-size:11px;
+  color:var(--text2);
+  margin-top:2px;
+}
   </style>
 </head>
 <body>
@@ -376,9 +420,17 @@
  
     <div class="field">
       <label>ラケット名</label>
-      <input type="text" id="rname"
-placeholder="例：YONEX ASTROX 88D Pro"
-oninput="handleNameInput()">
+<div style="position:relative">
+  <input
+    type="text"
+    id="rname"
+    placeholder="例：YONEX ASTROX 88D Pro"
+    oninput="handleNameInput()"
+    autocomplete="off"
+  >
+
+  <div id="suggestions" class="suggestions-box"></div>
+</div>
     </div>
  
     <div class="section-label">シャフトの硬さ</div>
@@ -542,17 +594,8 @@ oninput="handleNameInput()">
  
 <script>
 // ── Racket Database ──
+// ── Racket Database ──
 let racketDB = [];
-
-async function loadRacketDB() {
-  try {
-    const res = await fetch('rackets.json');
-    racketDB = await res.json();
-    console.log('ラケットDB読み込み完了', racketDB);
-  } catch (e) {
-    console.error('JSON読み込み失敗', e);
-  }
-}
 
 async function loadRacketDB() {
   try {
@@ -560,7 +603,10 @@ async function loadRacketDB() {
 
     console.log('status', res.status);
 
-    racketDB = await res.json();
+    const json = await res.json();
+
+    // rackets 配列だけ取り出す
+    racketDB = json.rackets;
 
     console.log('DB', racketDB);
 
@@ -569,281 +615,394 @@ async function loadRacketDB() {
   }
 }
 
+// ── State ──
+let shaft = 'hard',
+    bal = 'even',
+    weight = '4U';
 
-  // ── State ──
-  let shaft = 'hard', bal = 'even', weight = '4U';
-  let rackets = [];
-  let analysisResults = {};
-  let currentRacketIdx = 0;
-  let uploadedRackets = new Set();
- 
-  const shaftLabels = { soft:'やわらかめ', mid:'ふつう', hard:'かたい' };
-  const balLabels   = { head:'ヘッドヘビー', even:'イーブン', handle:'ハンドルヘビー' };
-  const weightLabels = { '2U':'2U（90-94g）','3U':'3U（85-89g）','4U':'4U（80-84g）','5U':'5U（75-79g）' };
- 
-  // ── Screen navigation ──
-  function goStep(n) {
-    if (n === 2 && rackets.length === 0) { alert('まず1本以上ラケットを登録してください'); return; }
-    for (let i = 1; i <= 3; i++) document.getElementById('screen'+i).classList.remove('active');
-    document.getElementById('screen'+n).classList.add('active');
-    updateStepUI(n);
-    if (n === 2) initAnalysisScreen();
-    if (n === 3) renderCompare();
+let rackets = [];
+let analysisResults = {};
+let currentRacketIdx = 0;
+let uploadedRackets = new Set();
+
+const shaftLabels = {
+  soft:'やわらかめ',
+  mid:'ふつう',
+  hard:'かたい'
+};
+
+const balLabels = {
+  head:'ヘッドヘビー',
+  even:'イーブン',
+  handle:'ハンドルヘビー'
+};
+
+const weightLabels = {
+  '2U':'2U（90-94g）',
+  '3U':'3U（85-89g）',
+  '4U':'4U（80-84g）',
+  '5U':'5U（75-79g）'
+};
+
+// ── Screen navigation ──
+function goStep(n) {
+
+  if (n === 2 && rackets.length === 0) {
+    alert('まず1本以上ラケットを登録してください');
+    return;
   }
- 
-  function updateStepUI(n) {
-    for (let i = 1; i <= 3; i++) {
-      const sc = document.getElementById('sc'+i);
-      const sl = document.getElementById('sl'+i);
-      sc.className = 'step-circle';
-      sl.className = 'step-label';
-      if (i < n)      { sc.classList.add('done'); sc.innerHTML='<i class="ti ti-check" style="font-size:13px"></i>'; sl.classList.add('done'); }
-      else if (i===n) { sc.classList.add('active'); sc.textContent=i; sl.classList.add('active'); }
-      else            { sc.textContent=i; }
+
+  for (let i = 1; i <= 3; i++) {
+    document
+      .getElementById('screen' + i)
+      .classList.remove('active');
+  }
+
+  document
+    .getElementById('screen' + n)
+    .classList.add('active');
+
+  updateStepUI(n);
+
+  if (n === 2) initAnalysisScreen();
+  if (n === 3) renderCompare();
+}
+
+function updateStepUI(n) {
+
+  for (let i = 1; i <= 3; i++) {
+
+    const sc = document.getElementById('sc' + i);
+    const sl = document.getElementById('sl' + i);
+
+    sc.className = 'step-circle';
+    sl.className = 'step-label';
+
+    if (i < n) {
+
+      sc.classList.add('done');
+
+      sc.innerHTML =
+        '<i class="ti ti-check" style="font-size:13px"></i>';
+
+      sl.classList.add('done');
+
+    } else if (i === n) {
+
+      sc.classList.add('active');
+      sc.textContent = i;
+
+      sl.classList.add('active');
+
+    } else {
+
+      sc.textContent = i;
     }
-    for (let i = 1; i <= 2; i++) {
-      document.getElementById('line'+i).className = 'step-line' + (i < n ? ' done' : '');
-    }
-  }
- 
-  // ── Screen 1: Registration ──
-  function selectShaft(v) {
-    shaft = v;
-    ['soft','mid','hard'].forEach(s => document.getElementById('shaft-'+s).classList.toggle('selected', s===v));
-    updatePreview();
-  }
-  function selectBal(v) {
-    bal = v;
-    ['head','even','handle'].forEach(b => document.getElementById('bal-'+b).classList.toggle('selected', b===v));
-    updatePreview();
-  }
-  function selectWeight(v) {
-    weight = v;
-    ['2U','3U','4U','5U'].forEach(w => document.getElementById('w'+w).classList.toggle('selected', w===v));
-    updatePreview();
-  }
-  function updatePreview() {
-    const name = document.getElementById('rname').value;
-    const pn = document.getElementById('prev-name');
-    pn.textContent = name || '未入力';
-    pn.style.color = name ? 'var(--text)' : 'var(--text3)';
-    document.getElementById('prev-shaft').innerHTML  = `<span class="tag tag-purple">${shaftLabels[shaft]}</span>`;
-    document.getElementById('prev-bal').innerHTML    = `<span class="tag tag-green">${balLabels[bal]}</span>`;
-    document.getElementById('prev-weight').innerHTML = `<span class="tag tag-amber">${weightLabels[weight]}</span>`;
   }
 
+  for (let i = 1; i <= 2; i++) {
 
-
-function handleNameInput() {
-  updatePreview();
-
-  const inputName = document.getElementById('rname').value.trim().toLowerCase();
-
-  if (!inputName) return;
-
-const found = racketDB.find(r =>
-  r.name.toLowerCase() === inputName
-);
-
-  if (found) {
-    autoFillRacket(found);
+    document.getElementById('line' + i).className =
+      'step-line' + (i < n ? ' done' : '');
   }
 }
+
+// ── Screen 1: Registration ──
+function selectShaft(v) {
+
+  shaft = v;
+
+  ['soft','mid','hard'].forEach(s => {
+
+    document
+      .getElementById('shaft-' + s)
+      .classList.toggle('selected', s === v);
+  });
+
+  updatePreview();
+}
+
+function selectBal(v) {
+
+  bal = v;
+
+  ['head','even','handle'].forEach(b => {
+
+    document
+      .getElementById('bal-' + b)
+      .classList.toggle('selected', b === v);
+  });
+
+  updatePreview();
+}
+
+function selectWeight(v) {
+
+  weight = v;
+
+  ['2U','3U','4U','5U'].forEach(w => {
+
+    document
+      .getElementById('w' + w)
+      .classList.toggle('selected', w === v);
+  });
+
+  updatePreview();
+}
+
+function updatePreview() {
+
+  const name = document
+    .getElementById('rname')
+    .value;
+
+  const pn = document.getElementById('prev-name');
+
+  pn.textContent = name || '未入力';
+
+  pn.style.color =
+    name ? 'var(--text)' : 'var(--text3)';
+
+  document.getElementById('prev-shaft').innerHTML =
+    `<span class="tag tag-purple">${shaftLabels[shaft]}</span>`;
+
+  document.getElementById('prev-bal').innerHTML =
+    `<span class="tag tag-green">${balLabels[bal]}</span>`;
+
+  document.getElementById('prev-weight').innerHTML =
+    `<span class="tag tag-amber">${weightLabels[weight]}</span>`;
+}
+
+// ── Name Input & Suggestion ──
+function handleNameInput() {
+
+  updatePreview();
+
+  const input = document.getElementById('rname');
+
+  const keyword =
+    input.value.trim().toLowerCase();
+
+  const box =
+    document.getElementById('suggestions');
+
+  box.innerHTML = '';
+
+  if (!keyword) return;
+
+  // 部分一致検索
+  const results = racketDB.filter(r => {
+
+    return (
+      r.model_name.toLowerCase().includes(keyword) ||
+      r.model_code.toLowerCase().includes(keyword)
+    );
+  });
+
+  // 最大8件
+  results.slice(0, 8).forEach(r => {
+
+    const item = document.createElement('div');
+
+    item.className = 'suggestion-item';
+
+    item.innerHTML = `
+      <div class="sug-name">
+        ${r.model_name}
+      </div>
+
+      <div class="sug-sub">
+        ${r.series} / ${r.model_code}
+      </div>
+    `;
+
+    item.onclick = () => {
+
+      input.value = r.model_name;
+
+      autoFillRacket(r);
+
+      box.innerHTML = '';
+
+      updatePreview();
+    };
+
+    box.appendChild(item);
+  });
+}
+
+// ── Auto Fill ──
 function autoFillRacket(data) {
 
-  // シャフト
-  shaft = data.shaft;
+  // 初期値
+  shaft = 'mid';
+  bal = 'even';
+  weight = '4U';
+
+  // シリーズ別推定
+  if (data.series.includes('アストロクス')) {
+    bal = 'head';
+    shaft = 'hard';
+  }
+
+  if (data.series.includes('ナノフレア')) {
+    bal = 'handle';
+    shaft = 'mid';
+  }
+
+  if (data.series.includes('アークセイバー')) {
+    bal = 'even';
+    shaft = 'mid';
+  }
+
+  // 軽量系
+  if (
+    data.model_name.includes('LT') ||
+    data.model_name.includes('00') ||
+    data.positioning_note.includes('軽量')
+  ) {
+    weight = '5U';
+  }
+
+  // シャフトUI
   ['soft','mid','hard'].forEach(s => {
-    document.getElementById('shaft-' + s)
+
+    document
+      .getElementById('shaft-' + s)
       .classList.toggle('selected', s === shaft);
   });
 
-  // バランス
-  bal = data.bal;
+  // バランスUI
   ['head','even','handle'].forEach(b => {
-    document.getElementById('bal-' + b)
+
+    document
+      .getElementById('bal-' + b)
       .classList.toggle('selected', b === bal);
   });
 
-  // 重量
-  weight = data.weight;
+  // 重量UI
   ['2U','3U','4U','5U'].forEach(w => {
-    document.getElementById('w' + w)
+
+    document
+      .getElementById('w' + w)
       .classList.toggle('selected', w === weight);
   });
 
   updatePreview();
 }
 
+// ── Add Racket ──
+function addRacket() {
 
+  const name = document
+    .getElementById('rname')
+    .value
+    .trim();
 
+  if (!name) {
 
+    document
+      .getElementById('rname')
+      .focus();
 
-
-  function addRacket() {
-    const name = document.getElementById('rname').value.trim();
-    if (!name) { document.getElementById('rname').focus(); return; }
-    rackets.push({ name, shaft, bal, weight });
-    renderRegList();
-    document.getElementById('rname').value = '';
-    updatePreview();
-    document.getElementById('goto-step2').style.display = 'block';
+    return;
   }
-  function removeRacket(i) {
-    rackets.splice(i, 1);
-    if (rackets.length === 0) document.getElementById('goto-step2').style.display = 'none';
-    renderRegList();
+
+  rackets.push({
+    name,
+    shaft,
+    bal,
+    weight
+  });
+
+  renderRegList();
+
+  document.getElementById('rname').value = '';
+
+  document.getElementById('suggestions').innerHTML = '';
+
+  updatePreview();
+
+  document.getElementById('goto-step2').style.display =
+    'block';
+}
+
+// ── Remove Racket ──
+function removeRacket(i) {
+
+  rackets.splice(i, 1);
+
+  if (rackets.length === 0) {
+
+    document.getElementById('goto-step2').style.display =
+      'none';
   }
-  function renderRegList() {
-    const section = document.getElementById('reg-section');
-    const list    = document.getElementById('reg-list');
-    document.getElementById('reg-count').textContent = rackets.length;
-    section.style.display = rackets.length ? 'block' : 'none';
-    list.innerHTML = rackets.map((r, i) => `
-      <div class="reg-card">
-        <div class="reg-icon"><i class="ti ti-tournament"></i></div>
-        <div style="flex:1">
-          <div class="reg-name">${r.name}</div>
-          <div class="reg-tags">
-            <span class="tag tag-purple">${shaftLabels[r.shaft]}</span>
-            <span class="tag tag-green">${balLabels[r.bal]}</span>
-            <span class="tag tag-amber">${weightLabels[r.weight]}</span>
-          </div>
+
+  renderRegList();
+}
+
+// ── Render Registered List ──
+function renderRegList() {
+
+  const section =
+    document.getElementById('reg-section');
+
+  const list =
+    document.getElementById('reg-list');
+
+  document.getElementById('reg-count').textContent =
+    rackets.length;
+
+  section.style.display =
+    rackets.length ? 'block' : 'none';
+
+  list.innerHTML = rackets.map((r, i) => `
+
+    <div class="reg-card">
+
+      <div class="reg-icon">
+        <i class="ti ti-tournament"></i>
+      </div>
+
+      <div style="flex:1">
+
+        <div class="reg-name">
+          ${r.name}
         </div>
-        <button class="reg-del" onclick="removeRacket(${i})"><i class="ti ti-x"></i></button>
-      </div>`).join('');
-  }
- 
-  // ── Screen 2: Analysis ──
-  function initAnalysisScreen() {
-    currentRacketIdx = uploadedRackets.size > 0 ? [...uploadedRackets].length : 0;
-    if (currentRacketIdx >= rackets.length) currentRacketIdx = 0;
-    renderTabs();
-    loadRacketPanel(currentRacketIdx);
-  }
-  function renderTabs() {
-    const container = document.getElementById('racket-tabs');
-    container.innerHTML = rackets.map((r, i) => {
-      const isDone = uploadedRackets.has(i);
-      const isActive = i === currentRacketIdx;
-      const cls = isDone ? 'rtab done-tab' : (isActive ? 'rtab active' : 'rtab');
-      const check = isDone ? '<i class="ti ti-check" style="font-size:11px;margin-right:3px"></i>' : '';
-      const label = r.name.length > 10 ? r.name.substring(0, 10) + '…' : r.name;
-      return `<span class="${cls}" onclick="switchRacket(${i})">${check}${label}</span>`;
-    }).join('');
-  }
-  function switchRacket(idx) {
-    currentRacketIdx = idx;
-    renderTabs();
-    loadRacketPanel(idx);
-  }
-  function loadRacketPanel(idx) {
-    const r = rackets[idx];
-    document.getElementById('upload-label').textContent = `${r.name} の試打動画をアップロード`;
-    const uploaded = uploadedRackets.has(idx);
-    document.getElementById('upload-area').style.display = uploaded ? 'none' : 'block';
-    document.getElementById('vcard').style.display = uploaded ? 'block' : 'none';
-    document.getElementById('vcard-name').textContent = r.name.replace(/\s/g,'_').toLowerCase() + '.mp4';
-    document.getElementById('analyze-btn').disabled = !uploaded;
-    document.getElementById('analyze-btn').style.display = 'flex';
-    document.getElementById('lbox').style.display = 'none';
-    if (analysisResults[idx]) {
-      renderResult(idx);
-    } else {
-      document.getElementById('result-panel').style.display = 'none';
-    }
-  }
-  function simulateUpload() {
-    uploadedRackets.add(currentRacketIdx);
-    document.getElementById('upload-area').style.display = 'none';
-    document.getElementById('vcard').style.display = 'block';
-    document.getElementById('analyze-btn').disabled = false;
-    renderTabs();
-  }
-  const loadSteps = ['ls1','ls2','ls3','ls4'];
-  function startAnalysis() {
-    document.getElementById('analyze-btn').style.display = 'none';
-    const lb = document.getElementById('lbox');
-    lb.style.display = 'flex';
-    loadSteps.forEach(id => { document.getElementById(id).className = 'lstep'; document.getElementById(id).querySelector('i').className='ti ti-circle'; });
-    let step = 0;
-    const timer = setInterval(() => {
-      if (step < loadSteps.length) {
-        if (step > 0) {
-          const prev = document.getElementById(loadSteps[step-1]);
-          prev.className = 'lstep done';
-          prev.querySelector('i').className = 'ti ti-check';
-        }
-        document.getElementById(loadSteps[step]).className = 'lstep active';
-        step++;
-      } else {
-        clearInterval(timer);
-        // Generate mock result
-        const scores = { total: Math.floor(75+Math.random()*15), speed: Math.floor(75+Math.random()*15), stable: Math.floor(75+Math.random()*15) };
-        analysisResults[currentRacketIdx] = scores;
-        lb.style.display = 'none';
-        renderResult(currentRacketIdx);
-        renderTabs();
-      }
-    }, 900);
-  }
-  function renderResult(idx) {
-    const scores = analysisResults[idx];
-    document.getElementById('rs-total').textContent  = scores.total;
-    document.getElementById('rs-speed').textContent  = scores.speed + ' km/h';
-    document.getElementById('rs-stable').textContent = scores.stable;
-    document.getElementById('fb-list').innerHTML = `
-      <div class="fb"><div class="fb-dot fb-dot-g"></div><div><div class="fb-text">打点が高い位置で安定</div><div class="fb-sub">スイング軌道が安定しています</div></div></div>
-      <div class="fb"><div class="fb-dot fb-dot-o"></div><div><div class="fb-text">肘のひきがやや浅い</div><div class="fb-sub">バックスイング時に肘をもっと引いてみましょう</div></div></div>`;
-    document.getElementById('result-panel').style.display = 'block';
-  }
-  function nextRacket() {
-    const next = rackets.findIndex((_, i) => i > currentRacketIdx && !uploadedRackets.has(i));
-    if (next !== -1) switchRacket(next);
-    else goStep(3);
-  }
- 
-  // ── Screen 3: Compare & Recommend ──
-  function renderCompare() {
-    const grid = document.getElementById('compare-grid');
-    const keys = Object.keys(analysisResults);
-    if (keys.length === 0) {
-      grid.innerHTML = '<div style="grid-column:1/-1;font-size:13px;color:var(--text2);padding:1rem 0">まだ分析結果がありません。ステップ2で動画を分析してください。</div>';
-      return;
-    }
-    const metrics = [
-      { key:'total', label:'総合', icon:'ti-stars', unit:'' },
-      { key:'speed', label:'速度', icon:'ti-bolt', unit:' km/h' },
-      { key:'stable', label:'安定性', icon:'ti-target', unit:'' },
-    ];
-    let html = '<div></div>';
-    keys.forEach(idx => { html += `<div class="ct-head">${rackets[idx].name.split(' ').pop()}</div>`; });
-    metrics.forEach(m => {
-      html += `<div class="ct-label"><i class="ti ${m.icon}" style="font-size:12px"></i>${m.label}</div>`;
-      const vals = keys.map(idx => analysisResults[idx][m.key]);
-      const maxVal = Math.max(...vals);
-      keys.forEach((idx, i) => {
-        const v = vals[i];
-        const isBest = v === maxVal;
-        html += `<div style="padding:5px 2px">
-          <div class="ct-val ${isBest?'ct-best':'ct-norm'}">${v}${m.unit}</div>
-          <div class="bar-wrap"><div class="bar b${['a','b','c'][i%3]}" style="width:${v}%"></div></div>
-        </div>`;
-      });
-    });
-    grid.innerHTML = html;
- 
-    // Recommendation
-    const bestIdx = keys.reduce((a, b) => analysisResults[a].total >= analysisResults[b].total ? a : b);
-    const best = rackets[bestIdx];
-    document.getElementById('rec-name').textContent = best.name;
-    document.getElementById('rec-reason').textContent =
-      `スイングスピードと打点安定性のバランスが最も高く（総合${analysisResults[bestIdx].total}点）、` +
-      `${shaftLabels[best.shaft]}シャフト・${balLabels[best.bal]}のバランスがあなたのフォームに合っています。`;
-  }
- 
-  // ── Init ──
+
+        <div class="reg-tags">
+
+          <span class="tag tag-purple">
+            ${shaftLabels[r.shaft]}
+          </span>
+
+          <span class="tag tag-green">
+            ${balLabels[r.bal]}
+          </span>
+
+          <span class="tag tag-amber">
+            ${weightLabels[r.weight]}
+          </span>
+
+        </div>
+
+      </div>
+
+      <button
+        class="reg-del"
+        onclick="removeRacket(${i})"
+      >
+        <i class="ti ti-x"></i>
+      </button>
+
+    </div>
+
+  `).join('');
+}
+
+// ── Init ──
 loadRacketDB();
+
 updatePreview();
 </script>
 </body>
