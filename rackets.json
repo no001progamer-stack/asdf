@@ -1,18 +1,18 @@
 [
   {
-    "name": "sdf",
+    "name": "edc",
     "shaft": "hard",
     "bal": "head",
     "weight": "4U"
   },
   {
-    "name": "a",
+    "name": "qaz",
     "shaft": "mid",
     "bal": "handle",
     "weight": "5U"
   },
   {
-    "name": "b",
+    "name": "wsx",
     "shaft": "soft",
     "bal": "even",
     "weight": "4U"
