@@ -554,7 +554,20 @@ async function loadRacketDB() {
   }
 }
 
+async function loadRacketDB() {
+  try {
+    const res = await fetch('rackets.json');
 
+    console.log('status', res.status);
+
+    racketDB = await res.json();
+
+    console.log('DB', racketDB);
+
+  } catch (e) {
+    console.error('JSON読み込み失敗', e);
+  }
+}
 
 
   // ── State ──
